@@ -1,11 +1,6 @@
-package signSystem
+package Models
 
-import (
-	"github.com/gin-gonic/gin"
-	"github.com/go-pg/pg/v10"
-)
-
-type users struct {
+type Users struct {
 	Username      string `json:"username"`
 	FirstName     string `json:"first_name"`
 	LastName      string `json:"last_name"`
@@ -13,10 +8,9 @@ type users struct {
 	Email         string `json:"email"`
 	FirstPassword string `json:"first_password"`
 	Password      string `json:"password"`
+	Status        string `json:"status"`
 }
 
-func SignUp(c *gin.Context, db *pg.DB) {
-}
-
-func SignIn(c *gin.Context, db *pg.DB) {
+type Payload struct {
+	AccessToken string `json:"access_token"`
 }
