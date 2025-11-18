@@ -161,7 +161,7 @@ func SignIn(c *gin.Context, db *pg.DB) {
 
 	}
 
-	c.JSON(http.StatusCreated, gin.H{
+	c.JSON(http.StatusOK, gin.H{
 		"message":     "Login Successful",
 		"accessToken": accessToken,
 	})

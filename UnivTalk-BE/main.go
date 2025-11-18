@@ -114,7 +114,7 @@ func main() {
 				"detail": err.Error(),
 			})
 		}
-		c.JSON(http.StatusCreated, gin.H{
+		c.JSON(http.StatusOK, gin.H{
 			"message": "Access token valid",
 		})
 	})
