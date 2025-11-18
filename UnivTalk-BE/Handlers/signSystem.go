@@ -167,18 +167,8 @@ func SignIn(c *gin.Context, db *pg.DB) {
 	})
 }
 
-func VerifyToken(c *gin.Context, db *pg.DB) {
-	var payload Models.Payload
-	if err := c.ShouldBindBodyWithJSON(payload); err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"error":  "Failed to retreive access token",
-			"detail": err.Error(),
-		})
-		log.Println("Failed to retreive access token")
-		return
-	}
-
-	cleanAccessToken := strings.TrimSpace(payload.AccessToken)
+func VerifyToken(token string, db *pg.DB) error {
+	cleanAccessToken := strings.TrimSpace(token)
 
 	AccessToken, err := jwt.ParseWithClaims(cleanAccessToken, &jwt.MapClaims{}, func(token *jwt.Token) (any, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
@@ -187,51 +177,34 @@ func VerifyToken(c *gin.Context, db *pg.DB) {
 		return []byte(AccessTokenSecret), nil
 	})
 	if err != nil {
-		message := "Token parsing error: " + err.Error()
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"error":  message,
-			"detail": err.Error(),
-		})
 		log.Print("Token parsing error: %v", err)
-		return
+		return err
 	}
 
 	claims, ok := AccessToken.Claims.(*jwt.MapClaims)
 	if !ok || !AccessToken.Valid {
 		log.Printf("Token are invalid or claims are malformed")
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": "Invalid token",
-		})
-		return
+		return err
 	}
 
 	email, ok := (*claims)["email"].(string)
 	if !ok || email == "" {
 		log.Printf("Email claims are missing or invalid")
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": "Invalid token data",
-		})
-		return
+		return err
 	}
 
 	exists, err := db.Model(new(Models.Users)).Where("email = ?", email).Exists()
 	if err != nil {
 		log.Printf("Database query error")
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Database query error",
-		})
-		return
+		return err
 	}
 
 	if !exists {
 		log.Printf("Email does not exist")
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": "Email does not exist",
-		})
-		return
+		return err
 	}
+	return nil
+}
 
-	c.JSON(http.StatusOK, gin.H{
-		"message": "Access token is valid",
-	})
+func GetProfile(c *gin.Context, pg *pg.DB) {
 }
