@@ -31,8 +31,8 @@ func comparePassword(hashedPwd, plainPwd string) bool {
 
 func generateAccessToken(userID string) (string, error) {
 	claims := jwt.MapClaims{
-		"user_id": userID,
-		"typ":     "access",
+		"email": userID,
+		"typ":   "access",
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	return token.SignedString([]byte(AccessTokenSecret))
@@ -206,5 +206,75 @@ func VerifyToken(token string, db *pg.DB) error {
 	return nil
 }
 
-func GetProfile(c *gin.Context, pg *pg.DB) {
+func GetProfile(c *gin.Context, db *pg.DB) {
+	authHeader := c.GetHeader("Authorization")
+	if authHeader == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Authorization header missing",
+		})
+		return
+	}
+	parts := strings.SplitN(authHeader, " ", 2)
+	if len(parts) != 2 || strings.ToLower(parts[0]) != "bearer" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Unauthorized",
+		})
+		return
+	}
+
+	cleanAccessToken := strings.TrimSpace(parts[1])
+
+	AccessToken, err := jwt.ParseWithClaims(cleanAccessToken, &jwt.MapClaims{}, func(token *jwt.Token) (any, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("Unexpected signin method: %v", token.Header["akg"])
+		}
+		return []byte(AccessTokenSecret), nil
+	})
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":  "Invalid access token",
+			"detail": err.Error(),
+		})
+		log.Printf("Invalid access token")
+		return
+	}
+
+	claims, ok := AccessToken.Claims.(*jwt.MapClaims)
+	if !ok || !AccessToken.Valid {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Invalid access token or claims are malformed",
+		})
+		log.Printf("Invalid access token")
+		return
+	}
+
+	email, ok := (*claims)["email"].(string)
+	if !ok || email == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Email claims are missing or invalid",
+		})
+		log.Printf("Email claims are missing or invalid")
+		return
+	}
+
+	var dbUser Models.Users
+	err = db.Model(&dbUser).Where("email = ?", email).Select()
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":  "Invalid Email",
+			"detail": err.Error(),
+		})
+		log.Printf("Database query error")
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":    "Profile query successful",
+		"email":      dbUser.Email,
+		"first_name": dbUser.FirstName,
+		"last_name":  dbUser.LastName,
+		"username":   dbUser.Username,
+		"university": dbUser.University,
+		"status":     dbUser.Status,
+	})
 }
