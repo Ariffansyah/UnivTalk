@@ -29,8 +29,7 @@ func AuthMiddleware(db *pg.DB) gin.HandlerFunc {
 		parts := strings.SplitN(authHeader, " ", 2)
 		if len(parts) != 2 || strings.ToLower(parts[0]) != "bearer" {
 			c.JSON(http.StatusUnauthorized, gin.H{
-				"error":  "Unauthorized",
-				"detail": parts,
+				"error": "Unauthorized",
 			})
 			c.Abort()
 			return
