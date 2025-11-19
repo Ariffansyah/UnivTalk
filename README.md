@@ -13,7 +13,7 @@ Run the application using:
 go run main.go
 ```
 
-Setup .env file based on the provided .env.example file.
+Setup .env file based on the provided .envExample file.
 
 
 ## Database Schema
@@ -63,4 +63,4 @@ or
 bun run dev
 ```
 
-Setup .env file based on the provided .env.example file.
+Setup .env file based on the provided .envExample file.
