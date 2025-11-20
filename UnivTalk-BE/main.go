@@ -118,6 +118,10 @@ func main() {
 		})
 	})
 
+	router.POST("/forums", func(c *gin.Context) {
+		Handlers.CreateForum(c, db)
+	})
+
 	// GET
 	router.GET("/universities", func(c *gin.Context) {
 		Handlers.GetUniversities(c, cacheData)
@@ -126,6 +130,18 @@ func main() {
 	router.GET("/profile", AuthMiddleware(db), func(c *gin.Context) {
 		Handlers.GetProfile(c, db)
 	})
+
+	router.GET("/categories", func(c *gin.Context) {
+		Handlers.GetCategories(c, db)
+	})
+
+	router.GET("/forums", func(c *gin.Context) {
+		Handlers.GetForums(c, db)
+	})
+
+	// PUT
+
+	// DELETE
 
 	router.Run()
 }
