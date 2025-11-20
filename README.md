@@ -19,30 +19,81 @@ Setup .env file based on the provided .envExample file.
 ## Database Schema
 Before running the application, please setup your PostgreSQL database with the following schema:
 
-Setup the `users` table in your PostgreSQL database using the following SQL commands:
 ```sql
--- Create enum type for user status
+-- 1. Create enum for user status
 CREATE TYPE user_status AS ENUM ('active', 'inactive');
 
--- Create users table
-CREATE TABLE users (
-    id               SERIAL PRIMARY KEY,
-    username         VARCHAR(32) NOT NULL UNIQUE,
-    first_name       VARCHAR(64) NOT NULL,
-    last_name        VARCHAR(64) NOT NULL,
-    university       VARCHAR(128) NOT NULL,
-    email            VARCHAR(128) NOT NULL UNIQUE,
-    password         VARCHAR(128) NOT NULL,
-    first_password   VARCHAR(128) NOT NULL,
-    status           user_status NOT NULL DEFAULT 'active',
-    salt             VARCHAR(64) NOT NUL
-    is_admin         BOOLEAN NOT NULL DEFAULT FALSE,
-    created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
+-- 2. Categories table
+CREATE TABLE categories (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) UNIQUE NOT NULL,
+    description TEXT
 );
-```
 
-- `status` field uses the enum type `user_status` and can be either `'active'` or `'inactive'`.
-- All fields are required except `is_admin` (defaults to false) and `created_at` (auto timestamp).
+-- 3. Users table
+CREATE TABLE users (
+    id SERIAL PRIMARY KEY,
+    username VARCHAR(32) NOT NULL UNIQUE,
+    first_name VARCHAR(64) NOT NULL,
+    last_name VARCHAR(64) NOT NULL,
+    university VARCHAR(128) NOT NULL,
+    email VARCHAR(128) NOT NULL UNIQUE,
+    password VARCHAR(128) NOT NULL,
+    first_password VARCHAR(128) NOT NULL,
+    status user_status NOT NULL DEFAULT 'active',
+    salt VARCHAR(64) NOT NULL,
+    is_admin BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- 4. Forums table
+CREATE TABLE forums (
+    id SERIAL PRIMARY KEY,
+    title VARCHAR(100) UNIQUE NOT NULL,
+    description TEXT,
+    category_id INTEGER REFERENCES categories(id),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 5. Forum members table (role: 'admin' or 'member')
+CREATE TABLE forum_members (
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    forum_id INTEGER NOT NULL REFERENCES forums(id) ON DELETE CASCADE,
+    role VARCHAR(10) NOT NULL CHECK (role IN ('admin', 'member')),
+    joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (user_id, forum_id)
+);
+
+-- 6. Posts table
+CREATE TABLE posts (
+    id SERIAL PRIMARY KEY,
+    forum_id INTEGER NOT NULL REFERENCES forums(id) ON DELETE CASCADE,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE SET NULL,
+    title VARCHAR(200) NOT NULL,
+    body TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 7. Comments table (1-level deep via parent_comment_id)
+CREATE TABLE comments (
+    id SERIAL PRIMARY KEY,
+    post_id INTEGER NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE SET NULL,
+    body TEXT NOT NULL,
+    parent_comment_id INTEGER REFERENCES comments(id) ON DELETE CASCADE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 8. Votes table (for posts or comments)
+CREATE TABLE votes (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    post_id INTEGER REFERENCES posts(id) ON DELETE CASCADE,
+    comment_id INTEGER REFERENCES comments(id) ON DELETE CASCADE,
+    value SMALLINT NOT NULL CHECK (value IN (1, -1)),
+    UNIQUE(user_id, post_id, comment_id)
+);
+``````
 
 ## Frontend Setup
 run the following command to install the necessary Node.js packages in the frontend directory:
