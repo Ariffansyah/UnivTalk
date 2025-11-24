@@ -7,35 +7,43 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/Ariffansyah/UnivTalk/Models"
 	"github.com/gin-gonic/gin"
 	"github.com/go-pg/pg/v10"
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 	"golang.org/x/crypto/argon2"
 )
 
 var AccessTokenSecret = os.Getenv("ACCESS_TOKEN_SECRET")
 
-func hashPassword(password string) string {
-	salt := []byte(os.Getenv("PASSWORD_SALT"))
-	hash := argon2.IDKey([]byte(password), salt, 1, 64*1024, 4, 32)
+func hashPassword(password string, salt string) string {
+	Salt := []byte(salt)
+	hash := argon2.IDKey([]byte(password), Salt, 1, 64*1024, 4, 32)
 	return base64.StdEncoding.EncodeToString(hash)
 }
 
-func comparePassword(hashedPwd, plainPwd string) bool {
-	salt := []byte(os.Getenv("PASSWORD_SALT"))
-	hash := argon2.IDKey([]byte(plainPwd), salt, 1, 64*1024, 4, 32)
+func comparePassword(hashedPwd, plainPwd string, salt string) bool {
+	Salt := []byte(salt)
+	hash := argon2.IDKey([]byte(plainPwd), Salt, 1, 64*1024, 4, 32)
 	return hashedPwd == base64.StdEncoding.EncodeToString(hash)
 }
 
 func generateAccessToken(userID string) (string, error) {
 	claims := jwt.MapClaims{
 		"email": userID,
-		"typ":   "access",
+		"type":  "access",
+		"exp":   time.Now().Add(time.Hour * 72).Unix(),
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	return token.SignedString([]byte(AccessTokenSecret))
+}
+
+func generateSalt() string {
+	salt := uuid.New()
+	return salt.String()
 }
 
 func SignUp(c *gin.Context, db *pg.DB) {
@@ -60,9 +68,14 @@ func SignUp(c *gin.Context, db *pg.DB) {
 		return
 	}
 
-	hashedPassword := hashPassword(newUser.Password)
+	salt := generateSalt()
+
+	hashedPassword := hashPassword(newUser.Password, salt)
+
+	uid, err := uuid.NewUUID()
 
 	user := &Models.Users{
+		UID:           uid,
 		Username:      newUser.Username,
 		FirstName:     newUser.FirstName,
 		LastName:      newUser.LastName,
@@ -71,9 +84,10 @@ func SignUp(c *gin.Context, db *pg.DB) {
 		FirstPassword: hashedPassword,
 		Password:      hashedPassword,
 		Status:        newUser.Status,
+		Salt:          salt,
 	}
 
-	_, err := db.Model(user).Insert()
+	_, err = db.Model(user).Insert()
 	if err != nil {
 		if pgErr, ok := err.(pg.Error); ok {
 			code := pgErr.Field('C')
@@ -142,7 +156,9 @@ func SignIn(c *gin.Context, db *pg.DB) {
 		return
 	}
 
-	if !comparePassword(dbUser.Password, user.Password) {
+	salt := dbUser.Salt
+
+	if !comparePassword(dbUser.Password, user.Password, salt) {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "Invalid email/username or password",
 		})
@@ -184,6 +200,16 @@ func VerifyToken(token string, db *pg.DB) error {
 	claims, ok := AccessToken.Claims.(*jwt.MapClaims)
 	if !ok || !AccessToken.Valid {
 		log.Printf("Token are invalid or claims are malformed")
+		return err
+	}
+
+	if exp, ok := (*claims)["exp"].(float64); ok {
+		if int64(exp) < time.Now().Unix() {
+			log.Printf("Token has expired")
+			return err
+		}
+	} else {
+		log.Printf("Expiration claim is missing or invalid")
 		return err
 	}
 
@@ -270,6 +296,7 @@ func GetProfile(c *gin.Context, db *pg.DB) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"message":    "Profile query successful",
+		"user_id":    dbUser.UID,
 		"email":      dbUser.Email,
 		"first_name": dbUser.FirstName,
 		"last_name":  dbUser.LastName,

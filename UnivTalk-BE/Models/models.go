@@ -1,14 +1,22 @@
 package Models
 
+import (
+	"time"
+
+	"github.com/google/uuid"
+)
+
 type Users struct {
-	Username      string `json:"username"`
-	FirstName     string `json:"first_name"`
-	LastName      string `json:"last_name"`
-	University    string `json:"university"`
-	Email         string `json:"email"`
-	FirstPassword string `json:"first_password"`
-	Password      string `json:"password"`
-	Status        string `json:"status"`
+	UID           uuid.UUID `json:"uid"`
+	Username      string    `json:"username"`
+	FirstName     string    `json:"first_name"`
+	LastName      string    `json:"last_name"`
+	University    string    `json:"university"`
+	Email         string    `json:"email"`
+	FirstPassword string    `json:"first_password"`
+	Password      string    `json:"password"`
+	Status        string    `json:"status"`
+	Salt          string    `json:"salt"`
 }
 
 type Payload struct {
@@ -16,17 +24,25 @@ type Payload struct {
 }
 
 type Forums struct {
-	ID          int    `json:"id"`
-	Title       string `json:"title"`
-	Description string `json:"description"`
-	CategoryID  string `json:"category_id"`
+	ID          int       `json:"id"`
+	FID         uuid.UUID `json:"fid"`
+	Title       string    `json:"title"`
+	Description string    `json:"description"`
+	CategoryID  string    `json:"category_id"`
+	UpdatedAt   time.Time `json:"updated_at"`
+}
+
+type ForumMembers struct {
+	UserID  uuid.UUID `json:"user_id"`
+	ForumID uuid.UUID `json:"forum_id"`
+	Role    string    `json:"role"`
 }
 
 type Posts struct {
-	ForumID     int    `json:"forum_id"`
-	AuthorEmail string `json:"author_email"`
-	Title       string `json:"title"`
-	Body        string `json:"body"`
+	ForumID     uuid.UUID `json:"forum_id"`
+	AuthorEmail string    `json:"author_email"`
+	Title       string    `json:"title"`
+	Body        string    `json:"body"`
 }
 
 type Comments struct {

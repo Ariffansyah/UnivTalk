@@ -69,7 +69,7 @@ func main() {
 
 	defer db.Close()
 
-	router.SetTrustedProxies([]string{"127.0.01"})
+	router.SetTrustedProxies([]string{"127.0.0.1"})
 
 	cacheData := cache.New(15*time.Minute, 30*time.Minute)
 
@@ -89,11 +89,16 @@ func main() {
 		MaxAge:           12 * 60 * 60,
 	}))
 
+	// Public routes
+	// GET
+	router.GET("/universities", func(c *gin.Context) {
+		Handlers.GetUniversities(c, cacheData)
+	})
+
 	// POST
 	router.POST("/signup", func(c *gin.Context) {
 		Handlers.SignUp(c, db)
 	})
-
 	router.POST("/signin", func(c *gin.Context) {
 		Handlers.SignIn(c, db)
 	})
@@ -105,6 +110,7 @@ func main() {
 				"error":  "Access token not found",
 				"detail": err.Error(),
 			})
+			return
 		}
 
 		if err := Handlers.VerifyToken(payload.AccessToken, db); err != nil {
@@ -112,36 +118,44 @@ func main() {
 				"error":  "Access token is invalid",
 				"detail": err.Error(),
 			})
+			return
 		}
 		c.JSON(http.StatusOK, gin.H{
 			"message": "Access token valid",
 		})
 	})
 
-	router.POST("/forums", func(c *gin.Context) {
-		Handlers.CreateForum(c, db)
-	})
+	// Protected routes
+	protected := router.Group("/", AuthMiddleware(db))
+	{
+		// GET
+		protected.GET("/profile", func(c *gin.Context) {
+			Handlers.GetProfile(c, db)
+		})
 
-	// GET
-	router.GET("/universities", func(c *gin.Context) {
-		Handlers.GetUniversities(c, cacheData)
-	})
+		protected.GET("/categories", func(c *gin.Context) {
+			Handlers.GetCategories(c, db)
+		})
 
-	router.GET("/profile", AuthMiddleware(db), func(c *gin.Context) {
-		Handlers.GetProfile(c, db)
-	})
+		protected.GET("/forums", func(c *gin.Context) {
+			Handlers.GetForums(c, db)
+		})
 
-	router.GET("/categories", func(c *gin.Context) {
-		Handlers.GetCategories(c, db)
-	})
+		// POST
+		protected.POST("/forums/create", func(c *gin.Context) {
+			Handlers.CreateForum(c, db)
+		})
 
-	router.GET("/forums", func(c *gin.Context) {
-		Handlers.GetForums(c, db)
-	})
+		// PUT
+		protected.PUT("/forums/update", func(c *gin.Context) {
+			Handlers.UpdateForum(c, db)
+		})
 
-	// PUT
-
-	// DELETE
+		// DELETE
+		protected.DELETE("/forums/delate", func(c *gin.Context) {
+			Handlers.DeleteForum(c, db)
+		})
+	}
 
 	router.Run()
 }
