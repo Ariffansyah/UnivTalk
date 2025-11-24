@@ -70,7 +70,7 @@ CREATE TABLE forum_members (
 -- 6. Posts table
 CREATE TABLE posts (
     id SERIAL PRIMARY KEY,
-    forum_id INTEGER NOT NULL REFERENCES forums(fid) ON DELETE CASCADE,
+    forum_id UUID NOT NULL REFERENCES forums(fid) ON DELETE CASCADE,
     user_id UUID REFERENCES users(uid) ON DELETE SET NULL,
     title VARCHAR(200) NOT NULL,
     body TEXT NOT NULL,
