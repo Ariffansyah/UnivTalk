@@ -152,7 +152,7 @@ func GetForumByID(c *gin.Context, db *pg.DB) {
 	forumID := c.Param("forum_id")
 	var forum Models.Forums
 
-	err := db.Model(&forum).Where("id = ?", forumID).Select()
+	err := db.Model(&forum).Where("fid = ?", forumID).Select()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error":  "Failed to retrieve forum",
@@ -194,7 +194,7 @@ func UpdateForum(c *gin.Context, db *pg.DB) {
 		CategoryID:  forums.CategoryID,
 		UpdatedAt:   time.Now(),
 	}
-	_, err := db.Model(forum).Where("id = ?", forums.ID).Update()
+	_, err := db.Model(forum).Where("fid = ?", forums.ID).Update()
 	if err != nil {
 		if pgErr, ok := err.(pg.Error); ok {
 			code := pgErr.Field('C')
@@ -233,7 +233,7 @@ func DeleteForum(c *gin.Context, db *pg.DB) {
 	}
 
 	forum := &Models.Forums{ID: forums.ID}
-	_, err := db.Model(forum).Where("id = ?", forums.ID).Delete()
+	_, err := db.Model(forum).Where("fid = ?", forums.ID).Delete()
 	if err != nil {
 		if pgErr, ok := err.(pg.Error); ok {
 			code := pgErr.Field('C')
