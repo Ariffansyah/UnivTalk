@@ -30,8 +30,14 @@ func GetCategories(c *gin.Context, db *pg.DB) {
 }
 
 func CreateForum(c *gin.Context, db *pg.DB) {
+	userID, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+
 	var forums Models.Forums
-	if err := c.ShouldBindBodyWithJSON(&forums); err != nil {
+	if err := c.ShouldBindJSON(&forums); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error":  "Invalid request",
 			"detail": err.Error(),
@@ -45,26 +51,6 @@ func CreateForum(c *gin.Context, db *pg.DB) {
 			"error":  "All fields are required",
 			"detail": "One or more fields are empty",
 		})
-		log.Printf("Create Forum Failed: One or more fields are empty")
-		return
-	}
-
-	var forumMembers Models.ForumMembers
-	if err := c.ShouldBindBodyWithJSON(&forumMembers); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error":  "Invalid request",
-			"detail": err.Error(),
-		})
-		log.Printf("Create Forum Failed, Error: %v", err.Error())
-		return
-	}
-
-	if forumMembers.UserID == uuid.Nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error":  "All fields are required",
-			"detail": "One or more fields are empty",
-		})
-		log.Printf("Create Forum Failed: One or more fields are empty")
 		return
 	}
 
@@ -77,51 +63,25 @@ func CreateForum(c *gin.Context, db *pg.DB) {
 
 	_, err := db.Model(forum).Insert()
 	if err != nil {
-		if pgErr, ok := err.(pg.Error); ok {
-			code := pgErr.Field('C')
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"error": "Database error",
-				"detail": map[string]any{
-					"message": pgErr.Error(),
-					"code":    code,
-				},
-			})
-			log.Printf("Create Forum Failed: Database error - %v, code: %v", pgErr.Error(), code)
-			return
-		}
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error":  "Failed to create forum",
 			"detail": err.Error(),
 		})
-		log.Printf("Create Forum Failed: Failed to create forum - %v", err.Error())
 		return
 	}
 
 	forumMember := &Models.ForumMembers{
-		UserID:  forumMembers.UserID,
+		UserID:  userID.(uuid.UUID),
 		ForumID: forum.FID,
 		Role:    "admin",
 	}
 
 	_, err = db.Model(forumMember).Insert()
 	if err != nil {
-		if pgErr, ok := err.(pg.Error); ok {
-			code := pgErr.Field('C')
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"error": "Database error",
-				"detail": map[string]any{
-					"message": pgErr.Error(),
-					"code":    code,
-				},
-			})
-			log.Printf("Create Forum Member Failed: Database error - %v, code: %v", pgErr.Error(), code)
-			return
-		}
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error":  "Failed to create forum member",
 			"detail": err.Error(),
 		})
-		log.Printf("Create Forum Member Failed: Failed to create forum member - %v", err.Error())
 		return
 	}
 
@@ -170,43 +130,54 @@ func GetForumByID(c *gin.Context, db *pg.DB) {
 
 func UpdateForum(c *gin.Context, db *pg.DB) {
 	forumID := c.Param("forum_id")
+	userID, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+
+	var forumMember Models.ForumMembers
+	err := db.Model(&forumMember).
+		Where("user_id = ?", userID.(uuid.UUID)).
+		Where("forum_id = ?", forumID).
+		Select()
+
+	if err != nil || forumMember.Role != "admin" {
+		c.JSON(http.StatusForbidden, gin.H{
+			"error":  "Forbidden",
+			"detail": "You do not have permission to update this forum",
+		})
+		return
+	}
+
 	var forums Models.Forums
-	if err := c.ShouldBindBodyWithJSON(&forums); err != nil {
+	if err := c.ShouldBindJSON(&forums); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error":  "Invalid request",
 			"detail": err.Error(),
 		})
-		log.Printf("Update Forum Failed: %v", err.Error())
 		return
 	}
 
-	forum := &Models.Forums{
-		FID:         uuid.MustParse(forumID),
-		Title:       forums.Title,
-		Description: forums.Description,
-		CategoryID:  forums.CategoryID,
-		UpdatedAt:   time.Now(),
+	if forums.Title == "" || forums.Description == "" || forums.CategoryID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":  "All fields are required",
+			"detail": "One or more fields are empty",
+		})
+		return
 	}
 
-	_, err := db.Model(forum).Where("fid = ?", forumID).Update()
+	forums.UpdatedAt = time.Now()
+
+	_, err = db.Model(&forums).
+		Column("title", "description", "category_id", "updated_at").
+		Where("fid = ?", forumID).
+		Update()
 	if err != nil {
-		if pgErr, ok := err.(pg.Error); ok {
-			code := pgErr.Field('C')
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"error": "Database error",
-				"detail": map[string]any{
-					"message": pgErr.Error(),
-					"code":    code,
-				},
-			})
-			log.Printf("Update Forum Failed: Database error - %v, code: %v", pgErr.Error(), code)
-			return
-		}
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error":  "Failed to update forum",
 			"detail": err.Error(),
 		})
-		log.Printf("Update Forum Failed: Failed to update forum - %v", err.Error())
 		return
 	}
 
@@ -217,26 +188,33 @@ func UpdateForum(c *gin.Context, db *pg.DB) {
 
 func DeleteForum(c *gin.Context, db *pg.DB) {
 	forumID := c.Param("forum_id")
+	userID, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+
+	var forumMember Models.ForumMembers
+	err := db.Model(&forumMember).
+		Where("user_id = ?", userID.(uuid.UUID)).
+		Where("forum_id = ?", forumID).
+		Select()
+
+	if err != nil || forumMember.Role != "admin" {
+		c.JSON(http.StatusForbidden, gin.H{
+			"error":  "Forbidden",
+			"detail": "You do not have permission to delete this forum",
+		})
+		return
+	}
+
 	forum := &Models.Forums{FID: uuid.MustParse(forumID)}
-	_, err := db.Model(forum).Where("fid = ?", forumID).Delete()
+	_, err = db.Model(forum).Where("fid = ?", forumID).Delete()
 	if err != nil {
-		if pgErr, ok := err.(pg.Error); ok {
-			code := pgErr.Field('C')
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"error": "Database error",
-				"detail": map[string]any{
-					"message": pgErr.Error(),
-					"code":    code,
-				},
-			})
-			log.Printf("Delete Forum Failed: Database error - %v, code: %v", pgErr.Error(), code)
-			return
-		}
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error":  "Failed to delete forum",
 			"detail": err.Error(),
 		})
-		log.Printf("Delete Forum Failed: Failed to delete forum - %v", err.Error())
 		return
 	}
 
@@ -266,41 +244,24 @@ func GetForumMembersByID(c *gin.Context, db *pg.DB) {
 
 func JoinForum(c *gin.Context, db *pg.DB) {
 	forumID := c.Param("forum_id")
-	var forumMembers Models.ForumMembers
-	if err := c.ShouldBindBodyWithJSON(&forumMembers); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error":  "Invalid request",
-			"detail": err.Error(),
-		})
-		log.Printf("Join Forum Failed: %v", err.Error())
+	userID, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
 		return
 	}
 
 	forumMember := &Models.ForumMembers{
-		UserID:  forumMembers.UserID,
+		UserID:  userID.(uuid.UUID),
 		ForumID: uuid.MustParse(forumID),
 		Role:    "member",
 	}
 
 	_, err := db.Model(forumMember).Insert()
 	if err != nil {
-		if pgErr, ok := err.(pg.Error); ok {
-			code := pgErr.Field('C')
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"error": "Database error",
-				"detail": map[string]any{
-					"message": pgErr.Error(),
-					"code":    code,
-				},
-			})
-			log.Printf("Join Forum Failed: Database error - %v, code: %v", pgErr.Error(), code)
-			return
-		}
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error":  "Failed to join forum",
 			"detail": err.Error(),
 		})
-		log.Printf("Join Forum Failed: Failed to join forum - %v", err.Error())
 		return
 	}
 
@@ -311,39 +272,22 @@ func JoinForum(c *gin.Context, db *pg.DB) {
 
 func LeaveForum(c *gin.Context, db *pg.DB) {
 	forumID := c.Param("forum_id")
-	var forumMembers Models.ForumMembers
-	if err := c.ShouldBindBodyWithJSON(&forumMembers); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error":  "Invalid request",
-			"detail": err.Error(),
-		})
-		log.Printf("Leave Forum Failed: %v", err.Error())
+	userID, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
 		return
 	}
 
 	forumMember := &Models.ForumMembers{
-		UserID:  forumMembers.UserID,
+		UserID:  userID.(uuid.UUID),
 		ForumID: uuid.MustParse(forumID),
 	}
 	_, err := db.Model(forumMember).Where("user_id = ? AND forum_id = ?", forumMember.UserID, forumMember.ForumID).Delete()
 	if err != nil {
-		if pgErr, ok := err.(pg.Error); ok {
-			code := pgErr.Field('C')
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"error": "Database error",
-				"detail": map[string]any{
-					"message": pgErr.Error(),
-					"code":    code,
-				},
-			})
-			log.Printf("Leave Forum Failed: Database error - %v, code: %v", pgErr.Error(), code)
-			return
-		}
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error":  "Failed to leave forum",
 			"detail": err.Error(),
 		})
-		log.Printf("Leave Forum Failed: Failed to leave forum - %v", err.Error())
 		return
 	}
 

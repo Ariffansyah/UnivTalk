@@ -232,6 +232,33 @@ func VerifyToken(token string, db *pg.DB) error {
 	return nil
 }
 
+func GetUserIDFromToken(token string) (string, error) {
+	cleanAccessToken := strings.TrimSpace(token)
+
+	AccessToken, err := jwt.ParseWithClaims(cleanAccessToken, &jwt.MapClaims{}, func(token *jwt.Token) (any, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("Unexpected signin method: %v", token.Header["alg"])
+		}
+		return []byte(AccessTokenSecret), nil
+	})
+	if err != nil {
+		log.Print("Token parsing error: %v", err)
+		return "", err
+	}
+	claims, ok := AccessToken.Claims.(*jwt.MapClaims)
+	if !ok || !AccessToken.Valid {
+		log.Printf("Token are invalid or claims are malformed")
+		return "", err
+	}
+
+	email, ok := (*claims)["email"].(string)
+	if !ok || email == "" {
+		log.Printf("Email claims are missing or invalid")
+		return "", err
+	}
+	return email, nil
+}
+
 func GetProfile(c *gin.Context, db *pg.DB) {
 	authHeader := c.GetHeader("Authorization")
 	if authHeader == "" {

@@ -61,7 +61,14 @@ func CreatePost(c *gin.Context, db *pg.DB) {
 		return
 	}
 
-	if post.ForumID == uuid.Nil || post.UserID == uuid.Nil || post.Title == "" || post.Body == "" {
+	userID, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+	post.UserID = userID.(uuid.UUID)
+
+	if post.ForumID == uuid.Nil || post.Title == "" || post.Body == "" {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error":  "All fields are required",
 			"detail": "One or more fields are empty",
@@ -88,9 +95,25 @@ func CreatePost(c *gin.Context, db *pg.DB) {
 
 func DeletePost(c *gin.Context, db *pg.DB) {
 	postID := c.Param("post_id")
-	var post Models.Posts
+	userID, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
 
-	_, err := db.Model(&post).Where("id = ?", postID).Delete()
+	var post Models.Posts
+	err := db.Model(&post).Where("id = ?", postID).Select()
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Post not found"})
+		return
+	}
+
+	if post.UserID != userID.(uuid.UUID) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "You are not allowed to delete this post"})
+		return
+	}
+
+	_, err = db.Model(&post).Where("id = ?", postID).Delete()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error":  "Failed to delete post",
@@ -106,28 +129,51 @@ func DeletePost(c *gin.Context, db *pg.DB) {
 }
 
 func UpdatePost(c *gin.Context, db *pg.DB) {
+	postID := c.Param("post_id")
+	userID, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+
+	var existingPost Models.Posts
+	err := db.Model(&existingPost).Where("id = ?", postID).Select()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":  "Failed to retrieve existing post",
+			"detail": err.Error(),
+		})
+		return
+	}
+
+	if existingPost.UserID != userID.(uuid.UUID) {
+		c.JSON(http.StatusForbidden, gin.H{
+			"error":  "Unauthorized",
+			"detail": "You can only update your own posts",
+		})
+		return
+	}
+
 	var post Models.Posts
 	if err := c.ShouldBindJSON(&post); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error":  "Invalid request",
 			"detail": err.Error(),
 		})
-		log.Printf("Update Post Failed: %v", err.Error())
 		return
 	}
 
-	if post.ID == 0 || post.ForumID == uuid.Nil || post.UserID == uuid.Nil || post.Title == "" || post.Body == "" {
+	if post.Title == "" || post.Body == "" {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error":  "All fields are required",
 			"detail": "One or more fields are empty",
 		})
-		log.Printf("Update Post Failed: One or more fields are empty")
 		return
 	}
 
 	post.UpdatedAt = time.Now()
 
-	_, err := db.Model(&post).Where("id = ?", post.ID).Update()
+	_, err = db.Model(&post).Column("title", "body", "updated_at").Where("id = ?", postID).Update()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error":  "Failed to update post",
@@ -145,15 +191,20 @@ func UpdatePost(c *gin.Context, db *pg.DB) {
 
 func CreateComment(c *gin.Context, db *pg.DB) {
 	var comment Models.Comments
-
 	if err := c.ShouldBindJSON(&comment); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
+	userID, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+	comment.UserID = userID.(uuid.UUID)
+
 	if comment.ParentID != 0 {
 		var parentComment Models.Comments
-
 		err := db.Model(&parentComment).
 			Where("id = ?", comment.ParentID).
 			Where("post_id = ?", comment.PostID).
@@ -162,7 +213,6 @@ func CreateComment(c *gin.Context, db *pg.DB) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Parent comment not found"})
 			return
 		}
-
 		if parentComment.ParentID != 0 {
 			comment.ParentID = parentComment.ParentID
 		}
@@ -182,9 +232,25 @@ func CreateComment(c *gin.Context, db *pg.DB) {
 
 func DeleteComment(c *gin.Context, db *pg.DB) {
 	commentID := c.Param("comment_id")
-	var comment Models.Comments
+	userID, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
 
-	_, err := db.Model(&comment).Where("id = ?", commentID).Delete()
+	var comment Models.Comments
+	err := db.Model(&comment).Where("id = ?", commentID).Select()
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Comment not found"})
+		return
+	}
+
+	if comment.UserID != userID.(uuid.UUID) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "You are not allowed to delete this comment"})
+		return
+	}
+
+	_, err = db.Model(&comment).Where("id = ?", commentID).Delete()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error":  "Failed to delete comment",

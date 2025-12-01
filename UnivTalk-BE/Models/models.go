@@ -49,12 +49,12 @@ type Posts struct {
 }
 
 type Comments struct {
-	ID          int       `json:"id"`
-	PostID      int       `json:"post_id"`
-	AuthorEmail string    `json:"author_email"`
-	Body        string    `json:"body"`
-	ParentID    int       `json:"parent_comment_id"`
-	CreatedAt   time.Time `json:"created_at"`
+	ID        int       `json:"id"`
+	PostID    int       `json:"post_id"`
+	UserID    uuid.UUID `json:"user_id"`
+	Body      string    `json:"body"`
+	ParentID  int       `json:"parent_comment_id"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 type Categories struct {
