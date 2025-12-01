@@ -30,7 +30,7 @@ func GetCategories(c *gin.Context, db *pg.DB) {
 }
 
 func CreateForum(c *gin.Context, db *pg.DB) {
-	userID, exists := c.Get("userID")
+	userID, exists := c.Get("user_id")
 	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
 		return
@@ -130,7 +130,7 @@ func GetForumByID(c *gin.Context, db *pg.DB) {
 
 func UpdateForum(c *gin.Context, db *pg.DB) {
 	forumID := c.Param("forum_id")
-	userID, exists := c.Get("userID")
+	userID, exists := c.Get("user_id")
 	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
 		return
@@ -188,7 +188,7 @@ func UpdateForum(c *gin.Context, db *pg.DB) {
 
 func DeleteForum(c *gin.Context, db *pg.DB) {
 	forumID := c.Param("forum_id")
-	userID, exists := c.Get("userID")
+	userID, exists := c.Get("user_id")
 	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
 		return
@@ -244,7 +244,7 @@ func GetForumMembersByID(c *gin.Context, db *pg.DB) {
 
 func JoinForum(c *gin.Context, db *pg.DB) {
 	forumID := c.Param("forum_id")
-	userID, exists := c.Get("userID")
+	userID, exists := c.Get("user_id")
 	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
 		return
@@ -272,7 +272,7 @@ func JoinForum(c *gin.Context, db *pg.DB) {
 
 func LeaveForum(c *gin.Context, db *pg.DB) {
 	forumID := c.Param("forum_id")
-	userID, exists := c.Get("userID")
+	userID, exists := c.Get("user_id")
 	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
 		return
