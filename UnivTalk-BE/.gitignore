@@ -10,7 +10,6 @@
 
 # Go modules
 vendor/
-go.sum
 
 # Dependency directories
 Godeps/
