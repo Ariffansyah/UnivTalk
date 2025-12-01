@@ -143,6 +143,7 @@ func main() {
 			forums.POST("/:forum_id/join", func(c *gin.Context) { Handlers.JoinForum(c, db) })
 			forums.POST("/:forum_id/leave", func(c *gin.Context) { Handlers.LeaveForum(c, db) })
 			forums.GET("/:forum_id/posts", func(c *gin.Context) { Handlers.GetForumPosts(c, db) })
+			forums.GET("/:forum_id/members", func(c *gin.Context) { Handlers.GetForumMembersByID(c, db) })
 		}
 
 		// GROUP: POSTS

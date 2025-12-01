@@ -169,6 +169,7 @@ func GetForumByID(c *gin.Context, db *pg.DB) {
 }
 
 func UpdateForum(c *gin.Context, db *pg.DB) {
+	forumID := c.Param("forum_id")
 	var forums Models.Forums
 	if err := c.ShouldBindBodyWithJSON(&forums); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -194,7 +195,7 @@ func UpdateForum(c *gin.Context, db *pg.DB) {
 		CategoryID:  forums.CategoryID,
 		UpdatedAt:   time.Now(),
 	}
-	_, err := db.Model(forum).Where("fid = ?", forums.ID).Update()
+	_, err := db.Model(forum).Where("fid = ?", forumID).Update()
 	if err != nil {
 		if pgErr, ok := err.(pg.Error); ok {
 			code := pgErr.Field('C')
@@ -222,6 +223,7 @@ func UpdateForum(c *gin.Context, db *pg.DB) {
 }
 
 func DeleteForum(c *gin.Context, db *pg.DB) {
+	forumID := c.Param("forum_id")
 	var forums Models.Forums
 	if err := c.ShouldBindBodyWithJSON(&forums); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -232,8 +234,8 @@ func DeleteForum(c *gin.Context, db *pg.DB) {
 		return
 	}
 
-	forum := &Models.Forums{ID: forums.ID}
-	_, err := db.Model(forum).Where("fid = ?", forums.ID).Delete()
+	forum := &Models.Forums{FID: forums.FID}
+	_, err := db.Model(forum).Where("fid = ?", forumID).Delete()
 	if err != nil {
 		if pgErr, ok := err.(pg.Error); ok {
 			code := pgErr.Field('C')
@@ -260,16 +262,17 @@ func DeleteForum(c *gin.Context, db *pg.DB) {
 	})
 }
 
-func GetForumMembers(c *gin.Context, db *pg.DB) {
+func GetForumMembersByID(c *gin.Context, db *pg.DB) {
+	forumID := c.Param("forum_id")
 	var forumMembers []Models.ForumMembers
 
-	err := db.Model(&forumMembers).Select()
+	err := db.Model(&forumMembers).Where("forum_id = ?", forumID).Select()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error":  "Failed to retrieve forum members",
 			"detail": err.Error(),
 		})
-		log.Printf("Get Forum Members Failed: %v", err.Error())
+		log.Printf("Get Forum Members By ID Failed: %v", err.Error())
 		return
 	}
 
@@ -279,6 +282,7 @@ func GetForumMembers(c *gin.Context, db *pg.DB) {
 }
 
 func JoinForum(c *gin.Context, db *pg.DB) {
+	forumID := c.Param("forum_id")
 	var forumMembers Models.ForumMembers
 	if err := c.ShouldBindBodyWithJSON(&forumMembers); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -289,7 +293,7 @@ func JoinForum(c *gin.Context, db *pg.DB) {
 		return
 	}
 
-	if forumMembers.UserID == uuid.Nil || forumMembers.ForumID == uuid.Nil {
+	if forumMembers.UserID == uuid.Nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error":  "All fields are required",
 			"detail": "One or more fields are empty",
@@ -300,7 +304,7 @@ func JoinForum(c *gin.Context, db *pg.DB) {
 
 	forumMember := &Models.ForumMembers{
 		UserID:  forumMembers.UserID,
-		ForumID: forumMembers.ForumID,
+		ForumID: uuid.MustParse(forumID),
 		Role:    "member",
 	}
 
@@ -332,6 +336,7 @@ func JoinForum(c *gin.Context, db *pg.DB) {
 }
 
 func LeaveForum(c *gin.Context, db *pg.DB) {
+	forumID := c.Param("forum_id")
 	var forumMembers Models.ForumMembers
 	if err := c.ShouldBindBodyWithJSON(&forumMembers); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -344,10 +349,10 @@ func LeaveForum(c *gin.Context, db *pg.DB) {
 
 	forumMember := &Models.ForumMembers{
 		UserID:  forumMembers.UserID,
-		ForumID: forumMembers.ForumID,
+		ForumID: uuid.MustParse(forumID),
 	}
 
-	_, err := db.Model(forumMember).Where("user_id = ? AND forum_id = ?", forumMembers.UserID, forumMembers.ForumID).Delete()
+	_, err := db.Model(forumMember).Where("user_id = ? AND forum_id = ?", forumMembers.UserID, forumID).Delete()
 	if err != nil {
 		if pgErr, ok := err.(pg.Error); ok {
 			code := pgErr.Field('C')
