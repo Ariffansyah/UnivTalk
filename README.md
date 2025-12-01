@@ -256,6 +256,12 @@ Authorization: Bearer <access_token_here>
   * **Param:** `:forum_id` is the **UUID** of the forum.
   * **Auth:** Bearer Token
 
+### Get Forum Members
+
+  * **Endpoint:** `GET /forums/:forum_id/members`
+  * **Param:** `:forum_id` is the **UUID** of the forum.
+  * **Auth:** Bearer Token
+
 ### Join Forum
 
   * **Endpoint:** `POST /forums/:forum_id/join`
