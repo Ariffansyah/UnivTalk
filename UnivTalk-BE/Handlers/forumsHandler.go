@@ -180,21 +180,14 @@ func UpdateForum(c *gin.Context, db *pg.DB) {
 		return
 	}
 
-	if forums.Title == "" || forums.Description == "" || forums.CategoryID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error":  "All fields are required",
-			"detail": "One or more fields are empty",
-		})
-		log.Printf("Update Forum Failed: One or more fields are empty")
-		return
-	}
-
 	forum := &Models.Forums{
+		FID:         uuid.MustParse(forumID),
 		Title:       forums.Title,
 		Description: forums.Description,
 		CategoryID:  forums.CategoryID,
 		UpdatedAt:   time.Now(),
 	}
+
 	_, err := db.Model(forum).Where("fid = ?", forumID).Update()
 	if err != nil {
 		if pgErr, ok := err.(pg.Error); ok {
@@ -224,17 +217,7 @@ func UpdateForum(c *gin.Context, db *pg.DB) {
 
 func DeleteForum(c *gin.Context, db *pg.DB) {
 	forumID := c.Param("forum_id")
-	var forums Models.Forums
-	if err := c.ShouldBindBodyWithJSON(&forums); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error":  "Invalid request",
-			"detail": err.Error(),
-		})
-		log.Printf("Delete Forum Failed: %v", err.Error())
-		return
-	}
-
-	forum := &Models.Forums{FID: forums.FID}
+	forum := &Models.Forums{FID: uuid.MustParse(forumID)}
 	_, err := db.Model(forum).Where("fid = ?", forumID).Delete()
 	if err != nil {
 		if pgErr, ok := err.(pg.Error); ok {
@@ -293,15 +276,6 @@ func JoinForum(c *gin.Context, db *pg.DB) {
 		return
 	}
 
-	if forumMembers.UserID == uuid.Nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error":  "All fields are required",
-			"detail": "One or more fields are empty",
-		})
-		log.Printf("Join Forum Failed: One or more fields are empty")
-		return
-	}
-
 	forumMember := &Models.ForumMembers{
 		UserID:  forumMembers.UserID,
 		ForumID: uuid.MustParse(forumID),
@@ -330,7 +304,7 @@ func JoinForum(c *gin.Context, db *pg.DB) {
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{
+	c.JSON(http.StatusOK, gin.H{
 		"message": "Joined forum successfully",
 	})
 }
@@ -351,8 +325,7 @@ func LeaveForum(c *gin.Context, db *pg.DB) {
 		UserID:  forumMembers.UserID,
 		ForumID: uuid.MustParse(forumID),
 	}
-
-	_, err := db.Model(forumMember).Where("user_id = ? AND forum_id = ?", forumMembers.UserID, forumID).Delete()
+	_, err := db.Model(forumMember).Where("user_id = ? AND forum_id = ?", forumMember.UserID, forumMember.ForumID).Delete()
 	if err != nil {
 		if pgErr, ok := err.(pg.Error); ok {
 			code := pgErr.Field('C')
