@@ -116,7 +116,7 @@ func UpdatePost(c *gin.Context, db *pg.DB) {
 		return
 	}
 
-	if post.ForumID == uuid.Nil || post.UserID == uuid.Nil || post.Title == "" || post.Body == "" {
+	if post.ID == 0 || post.ForumID == uuid.Nil || post.UserID == uuid.Nil || post.Title == "" || post.Body == "" {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error":  "All fields are required",
 			"detail": "One or more fields are empty",
@@ -127,7 +127,7 @@ func UpdatePost(c *gin.Context, db *pg.DB) {
 
 	post.UpdatedAt = time.Now()
 
-	_, err := db.Model(&post).Where("id = ?", post.ForumID).Update()
+	_, err := db.Model(&post).Where("id = ?", post.ID).Update()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error":  "Failed to update post",

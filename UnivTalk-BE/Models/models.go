@@ -39,18 +39,22 @@ type ForumMembers struct {
 }
 
 type Posts struct {
+	ID        int       `json:"id"`
 	ForumID   uuid.UUID `json:"forum_id"`
 	UserID    uuid.UUID `json:"user_id"`
 	Title     string    `json:"title"`
 	Body      string    `json:"body"`
+	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
 type Comments struct {
-	PostID      int    `json:"post_id"`
-	AuthorEmail string `json:"author_email"`
-	Body        string `json:"body"`
-	ParentID    int    `json:"parent_id"`
+	ID          int       `json:"id"`
+	PostID      int       `json:"post_id"`
+	AuthorEmail string    `json:"author_email"`
+	Body        string    `json:"body"`
+	ParentID    int       `json:"parent_comment_id"`
+	CreatedAt   time.Time `json:"created_at"`
 }
 
 type Categories struct {
