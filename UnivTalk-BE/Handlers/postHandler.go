@@ -95,7 +95,7 @@ func CreatePost(c *gin.Context, db *pg.DB) {
 
 func DeletePost(c *gin.Context, db *pg.DB) {
 	postID := c.Param("post_id")
-	userID, exists := c.Get("userID")
+	userID, exists := c.Get("user_id")
 	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
 		return
@@ -130,7 +130,7 @@ func DeletePost(c *gin.Context, db *pg.DB) {
 
 func UpdatePost(c *gin.Context, db *pg.DB) {
 	postID := c.Param("post_id")
-	userID, exists := c.Get("userID")
+	userID, exists := c.Get("user_id")
 	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
 		return
@@ -196,7 +196,7 @@ func CreateComment(c *gin.Context, db *pg.DB) {
 		return
 	}
 
-	userID, exists := c.Get("userID")
+	userID, exists := c.Get("user_id")
 	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
 		return
@@ -232,7 +232,7 @@ func CreateComment(c *gin.Context, db *pg.DB) {
 
 func DeleteComment(c *gin.Context, db *pg.DB) {
 	commentID := c.Param("comment_id")
-	userID, exists := c.Get("userID")
+	userID, exists := c.Get("user_id")
 	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
 		return
