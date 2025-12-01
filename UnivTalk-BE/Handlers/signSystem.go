@@ -232,7 +232,7 @@ func VerifyToken(token string, db *pg.DB) error {
 	return nil
 }
 
-func GetUserIDFromToken(token string) (string, error) {
+func GetUserIDFromToken(token string, db *pg.DB) (string, error) {
 	cleanAccessToken := strings.TrimSpace(token)
 
 	AccessToken, err := jwt.ParseWithClaims(cleanAccessToken, &jwt.MapClaims{}, func(token *jwt.Token) (any, error) {
@@ -256,7 +256,15 @@ func GetUserIDFromToken(token string) (string, error) {
 		log.Printf("Email claims are missing or invalid")
 		return "", err
 	}
-	return email, nil
+
+	var user Models.Users
+	err = db.Model(&user).Column("uid").Where("email = ?", email).Select()
+	if err != nil {
+		log.Printf("Database query error")
+		return "", err
+	}
+
+	return user.UID.String(), nil
 }
 
 func GetProfile(c *gin.Context, db *pg.DB) {

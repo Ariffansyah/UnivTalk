@@ -45,7 +45,7 @@ func AuthMiddleware(db *pg.DB) gin.HandlerFunc {
 			return
 		}
 
-		userID, err := Handlers.GetUserIDFromToken(token)
+		userID, err := Handlers.GetUserIDFromToken(token, db)
 		if err != nil {
 			c.JSON(http.StatusUnauthorized, gin.H{
 				"error": "Invalid token",
