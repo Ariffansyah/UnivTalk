@@ -244,11 +244,9 @@ Authorization: Bearer <access_token_here>
         "title": "Golang Enthusiasts",
         "description": "Discuss everything about Go",
         "category_id": "1",
-        "user_id": "uuid-user-id-here"
     }
     ```
-      * `category_id`: String containing the Integer ID of the category.
-      * `user_id`: UUID of the user creating the forum (to be set as admin).
+  * `category_id`: String containing the Integer ID of the category.
 
 ### Get Forum Detail
 
@@ -266,19 +264,11 @@ Authorization: Bearer <access_token_here>
 
   * **Endpoint:** `POST /forums/:forum_id/join`
   * **Auth:** Bearer Token
-  * **Body (JSON):**
-    ```json
-    {
-        "user_id": "uuid-user-id",
-        "forum_id": "uuid-forum-id"
-    }
-    ```
 
 ### Leave Forum
 
   * **Endpoint:** `POST /forums/:forum_id/leave`
   * **Auth:** Bearer Token
-  * **Body (JSON):** Same as Join Forum.
 
 -----
 
@@ -297,7 +287,6 @@ Authorization: Bearer <access_token_here>
     ```json
     {
         "forum_id": "uuid-forum-id",
-        "user_id": "uuid-user-id",
         "title": "How to handle cors in Gin?",
         "body": "I am having trouble with..."
     }
@@ -331,13 +320,12 @@ Authorization: Bearer <access_token_here>
     ```json
     {
         "post_id": 123,
-        "author_email": "budi@ui.ac.id",
         "body": "This is my comment.",
         "parent_id": 0
     }
     ```
-      * `post_id`: Integer ID of the post.
-      * `parent_id`: `0` for top-level comments, or `Integer ID` of another comment to reply.
+  * `post_id`: Integer ID of the post.
+  * `parent_id`: `0` for top-level comments, or `Integer ID` of another comment to reply.
 
 ### Delete Comment
 
