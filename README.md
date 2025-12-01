@@ -74,7 +74,8 @@ CREATE TABLE posts (
     user_id UUID REFERENCES users(uid) ON DELETE SET NULL,
     title VARCHAR(200) NOT NULL,
     body TEXT NOT NULL,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 -- 7. Comments table (1-level deep via parent_comment_id)

@@ -39,10 +39,11 @@ type ForumMembers struct {
 }
 
 type Posts struct {
-	ForumID     uuid.UUID `json:"forum_id"`
-	AuthorEmail string    `json:"author_email"`
-	Title       string    `json:"title"`
-	Body        string    `json:"body"`
+	ForumID   uuid.UUID `json:"forum_id"`
+	UserID    uuid.UUID `json:"user_id"`
+	Title     string    `json:"title"`
+	Body      string    `json:"body"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 type Comments struct {

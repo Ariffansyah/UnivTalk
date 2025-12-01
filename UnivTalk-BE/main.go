@@ -128,34 +128,41 @@ func main() {
 	// Protected routes
 	protected := router.Group("/", AuthMiddleware(db))
 	{
-		// GET
-		protected.GET("/profile", func(c *gin.Context) {
-			Handlers.GetProfile(c, db)
-		})
+		protected.GET("/profile", func(c *gin.Context) { Handlers.GetProfile(c, db) })
+		protected.GET("/categories", func(c *gin.Context) { Handlers.GetCategories(c, db) })
 
-		protected.GET("/categories", func(c *gin.Context) {
-			Handlers.GetCategories(c, db)
-		})
+		// GROUP: FORUMS
+		// Prefix URL: /forums
+		forums := protected.Group("/forums")
+		{
+			forums.GET("/", func(c *gin.Context) { Handlers.GetForums(c, db) })
+			forums.POST("/", func(c *gin.Context) { Handlers.CreateForum(c, db) })
+			forums.GET("/:forum_id", func(c *gin.Context) { Handlers.GetForumByID(c, db) })
+			forums.PUT("/:forum_id", func(c *gin.Context) { Handlers.UpdateForum(c, db) })
+			forums.DELETE("/:forum_id", func(c *gin.Context) { Handlers.DeleteForum(c, db) })
+			forums.POST("/:forum_id/join", func(c *gin.Context) { Handlers.JoinForum(c, db) })
+			forums.POST("/:forum_id/leave", func(c *gin.Context) { Handlers.LeaveForum(c, db) })
+			forums.GET("/:forum_id/posts", func(c *gin.Context) { Handlers.GetForumPosts(c, db) })
+		}
 
-		protected.GET("/forums", func(c *gin.Context) {
-			Handlers.GetForums(c, db)
-		})
+		// GROUP: POSTS
+		// Prefix URL: /posts
+		posts := protected.Group("/posts")
+		{
+			posts.POST("/", func(c *gin.Context) { Handlers.CreatePost(c, db) })
+			posts.GET("/:post_id", func(c *gin.Context) { Handlers.GetForumPostsByID(c, db) })
+			posts.PUT("/:post_id", func(c *gin.Context) { Handlers.UpdatePost(c, db) })
+			posts.DELETE("/:post_id", func(c *gin.Context) { Handlers.DeletePost(c, db) })
+			posts.GET("/:post_id/comments", func(c *gin.Context) { Handlers.GetPostComments(c, db) })
+		}
 
-		// POST
-		protected.POST("/forums/create", func(c *gin.Context) {
-			Handlers.CreateForum(c, db)
-		})
-
-		// PUT
-		protected.PUT("/forums/update", func(c *gin.Context) {
-			Handlers.UpdateForum(c, db)
-		})
-
-		// DELETE
-		protected.DELETE("/forums/delate", func(c *gin.Context) {
-			Handlers.DeleteForum(c, db)
-		})
+		// GROUP: COMMENTS
+		// Prefix URL: /comments
+		comments := protected.Group("/comments")
+		{
+			comments.POST("/", func(c *gin.Context) { Handlers.CreateComment(c, db) })
+			comments.DELETE("/:comment_id", func(c *gin.Context) { Handlers.DeleteComment(c, db) })
+		}
 	}
-
 	router.Run()
 }
