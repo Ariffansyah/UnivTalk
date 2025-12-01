@@ -1,22 +1,23 @@
 # UnivTalk
-UnivTalk is a web application designed for university students to connect, and collaborate.
+UnivTalk is a web application designed for university students to connect and collaborate.
 
 ## Backend Setup
 Run the following command to install the necessary Go modules in the backend directory:
 
 ```bash
 go mod tidy
-```
+````
+
 Run the application using:
 
 ```bash
 go run main.go
 ```
 
-Setup .env file based on the provided .envExample file.
-
+Setup `.env` file based on the provided `.envExample` file.
 
 ## Database Schema
+
 Before running the application, please setup your PostgreSQL database with the following schema:
 
 ```sql
@@ -104,22 +105,235 @@ CREATE TABLE votes (
 ```
 
 ## Frontend Setup
-run the following command to install the necessary Node.js packages in the frontend directory:
+
+Run the following command to install the necessary Node.js packages in the frontend directory:
 
 ```bash
 npm install 
 ```
+
 or
+
 ```bash
 bun install
 ```
+
 Run the application using:
+
 ```bash
 npm run dev
 ```
+
 or
+
 ```bash
 bun run dev
 ```
 
-Setup .env file based on the provided .envExample file.
+Setup `.env` file based on the provided `.envExample` file.
+
+-----
+
+# API Documentation & Usage
+
+**Base URL:** `http://localhost:8080` (Development)
+
+## 🔐 Authentication & Headers
+
+Most endpoints are **Protected Routes**.
+
+  * **Public Routes:** Login, Register, Verify Token, Get Universities.
+  * **Protected Routes:** Require `Authorization` header.
+
+**Header Format:**
+
+```
+Authorization: Bearer <access_token_here>
+```
+
+-----
+
+## 1\. User & Authentication
+
+### Register (Sign Up)
+
+  * **Endpoint:** `POST /signup`
+  * **Auth:** Public
+  * **Note:** `status` must be strictly `"active"` or `"inactive"` (database enum).
+  * **Body (JSON):**
+    ```json
+    {
+        "username": "budi_santoso",
+        "first_name": "Budi",
+        "last_name": "Santoso",
+        "university": "Universitas Indonesia",
+        "email": "budi@ui.ac.id",
+        "password": "passwordStrong123",
+        "status": "active"
+    }
+    ```
+
+### Login (Sign In)
+
+  * **Endpoint:** `POST /signin`
+  * **Auth:** Public
+  * **Body (JSON):** Can use `email` OR `username`.
+    ```json
+    {
+        "email": "budi@ui.ac.id",
+        "password": "passwordStrong123"
+    }
+    ```
+  * **Response Success:**
+    ```json
+    {
+        "message": "Login Successful",
+        "accessToken": "eyJh... (save this token)"
+    }
+    ```
+
+### Get Profile
+
+  * **Endpoint:** `GET /profile`
+  * **Auth:** Bearer Token
+  * **Description:** Get currently logged-in user data.
+
+### Verify Token
+
+  * **Endpoint:** `POST /verifytoken`
+  * **Auth:** Public
+  * **Body (JSON):**
+    ```json
+    { 
+        "access_token": "eyJh..." 
+    }
+    ```
+
+-----
+
+## 2\. General Data
+
+### Get Universities
+
+  * **Endpoint:** `GET /universities`
+  * **Auth:** Public
+  * **Query Param:** `?name=search_query` (Optional)
+
+### Get Categories
+
+  * **Endpoint:** `GET /categories`
+  * **Auth:** Bearer Token
+  * **Response:** List of forum categories. Note that `id` is an **Integer**.
+
+-----
+
+## 3\. Forums System
+
+### Get All Forums
+
+  * **Endpoint:** `GET /forums/`
+  * **Auth:** Bearer Token
+
+### Create Forum
+
+  * **Endpoint:** `POST /forums/`
+  * **Auth:** Bearer Token
+  * **Body (JSON):**
+    ```json
+    {
+        "title": "Golang Enthusiasts",
+        "description": "Discuss everything about Go",
+        "category_id": "1",
+        "user_id": "uuid-user-id-here"
+    }
+    ```
+      * `category_id`: String containing the Integer ID of the category.
+      * `user_id`: UUID of the user creating the forum (to be set as admin).
+
+### Get Forum Detail
+
+  * **Endpoint:** `GET /forums/:forum_id`
+  * **Param:** `:forum_id` is the **UUID** of the forum.
+  * **Auth:** Bearer Token
+
+### Join Forum
+
+  * **Endpoint:** `POST /forums/:forum_id/join`
+  * **Auth:** Bearer Token
+  * **Body (JSON):**
+    ```json
+    {
+        "user_id": "uuid-user-id",
+        "forum_id": "uuid-forum-id"
+    }
+    ```
+
+### Leave Forum
+
+  * **Endpoint:** `POST /forums/:forum_id/leave`
+  * **Auth:** Bearer Token
+  * **Body (JSON):** Same as Join Forum.
+
+-----
+
+## 4\. Posting System
+
+### Get Posts (By Forum)
+
+  * **Endpoint:** `GET /forums/:forum_id/posts`
+  * **Auth:** Bearer Token
+
+### Create Post
+
+  * **Endpoint:** `POST /posts/`
+  * **Auth:** Bearer Token
+  * **Body (JSON):**
+    ```json
+    {
+        "forum_id": "uuid-forum-id",
+        "user_id": "uuid-user-id",
+        "title": "How to handle cors in Gin?",
+        "body": "I am having trouble with..."
+    }
+    ```
+
+### Get Single Post
+
+  * **Endpoint:** `GET /posts/:post_id`
+  * **Param:** `:post_id` is an **Integer** (from database Serial ID).
+  * **Auth:** Bearer Token
+
+### Delete Post
+
+  * **Endpoint:** `DELETE /posts/:post_id`
+  * **Auth:** Bearer Token
+
+-----
+
+## 5\. Comment System
+
+### Get Comments (By Post)
+
+  * **Endpoint:** `GET /posts/:post_id/comments`
+  * **Auth:** Bearer Token
+
+### Create Comment
+
+  * **Endpoint:** `POST /comments/`
+  * **Auth:** Bearer Token
+  * **Body (JSON):**
+    ```json
+    {
+        "post_id": 123,
+        "author_email": "budi@ui.ac.id",
+        "body": "This is my comment.",
+        "parent_id": 0
+    }
+    ```
+      * `post_id`: Integer ID of the post.
+      * `parent_id`: `0` for top-level comments, or `Integer ID` of another comment to reply.
+
+### Delete Comment
+
+  * **Endpoint:** `DELETE /comments/:comment_id`
+  * **Auth:** Bearer Token
