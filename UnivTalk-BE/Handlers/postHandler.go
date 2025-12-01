@@ -61,12 +61,25 @@ func CreatePost(c *gin.Context, db *pg.DB) {
 		return
 	}
 
-	userID, exists := c.Get("user_id")
+	userIDInterface, exists := c.Get("user_id")
 	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
 		return
 	}
-	post.UserID = userID.(uuid.UUID)
+
+	userIDStr, ok := userIDInterface.(string)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "User ID format error"})
+		return
+	}
+
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid User ID"})
+		return
+	}
+
+	post.UserID = userID
 
 	if post.ForumID == uuid.Nil || post.Title == "" || post.Body == "" {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -77,7 +90,7 @@ func CreatePost(c *gin.Context, db *pg.DB) {
 		return
 	}
 
-	_, err := db.Model(&post).Returning("*").Insert()
+	_, err = db.Model(&post).Returning("*").Insert()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error":  "Failed to create post",
@@ -95,20 +108,33 @@ func CreatePost(c *gin.Context, db *pg.DB) {
 
 func DeletePost(c *gin.Context, db *pg.DB) {
 	postID := c.Param("post_id")
-	userID, exists := c.Get("user_id")
+
+	userIDInterface, exists := c.Get("user_id")
 	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
 		return
 	}
 
+	userIDStr, ok := userIDInterface.(string)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "User ID format error"})
+		return
+	}
+
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid User ID"})
+		return
+	}
+
 	var post Models.Posts
-	err := db.Model(&post).Where("id = ?", postID).Select()
+	err = db.Model(&post).Where("id = ?", postID).Select()
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Post not found"})
 		return
 	}
 
-	if post.UserID != userID.(uuid.UUID) {
+	if post.UserID != userID {
 		c.JSON(http.StatusForbidden, gin.H{"error": "You are not allowed to delete this post"})
 		return
 	}
@@ -130,14 +156,27 @@ func DeletePost(c *gin.Context, db *pg.DB) {
 
 func UpdatePost(c *gin.Context, db *pg.DB) {
 	postID := c.Param("post_id")
-	userID, exists := c.Get("user_id")
+
+	userIDInterface, exists := c.Get("user_id")
 	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
 		return
 	}
 
+	userIDStr, ok := userIDInterface.(string)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "User ID format error"})
+		return
+	}
+
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid User ID"})
+		return
+	}
+
 	var existingPost Models.Posts
-	err := db.Model(&existingPost).Where("id = ?", postID).Select()
+	err = db.Model(&existingPost).Where("id = ?", postID).Select()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error":  "Failed to retrieve existing post",
@@ -146,7 +185,7 @@ func UpdatePost(c *gin.Context, db *pg.DB) {
 		return
 	}
 
-	if existingPost.UserID != userID.(uuid.UUID) {
+	if existingPost.UserID != userID {
 		c.JSON(http.StatusForbidden, gin.H{
 			"error":  "Unauthorized",
 			"detail": "You can only update your own posts",
@@ -196,12 +235,25 @@ func CreateComment(c *gin.Context, db *pg.DB) {
 		return
 	}
 
-	userID, exists := c.Get("user_id")
+	userIDInterface, exists := c.Get("user_id")
 	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
 		return
 	}
-	comment.UserID = userID.(uuid.UUID)
+
+	userIDStr, ok := userIDInterface.(string)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "User ID format error"})
+		return
+	}
+
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid User ID"})
+		return
+	}
+
+	comment.UserID = userID
 
 	if comment.ParentID != 0 {
 		var parentComment Models.Comments
@@ -218,7 +270,7 @@ func CreateComment(c *gin.Context, db *pg.DB) {
 		}
 	}
 
-	_, err := db.Model(&comment).Returning("*").Insert()
+	_, err = db.Model(&comment).Returning("*").Insert()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -232,20 +284,33 @@ func CreateComment(c *gin.Context, db *pg.DB) {
 
 func DeleteComment(c *gin.Context, db *pg.DB) {
 	commentID := c.Param("comment_id")
-	userID, exists := c.Get("user_id")
+
+	userIDInterface, exists := c.Get("user_id")
 	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
 		return
 	}
 
+	userIDStr, ok := userIDInterface.(string)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "User ID format error"})
+		return
+	}
+
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid User ID"})
+		return
+	}
+
 	var comment Models.Comments
-	err := db.Model(&comment).Where("id = ?", commentID).Select()
+	err = db.Model(&comment).Where("id = ?", commentID).Select()
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Comment not found"})
 		return
 	}
 
-	if comment.UserID != userID.(uuid.UUID) {
+	if comment.UserID != userID {
 		c.JSON(http.StatusForbidden, gin.H{"error": "You are not allowed to delete this comment"})
 		return
 	}

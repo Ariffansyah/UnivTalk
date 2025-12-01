@@ -30,9 +30,21 @@ func GetCategories(c *gin.Context, db *pg.DB) {
 }
 
 func CreateForum(c *gin.Context, db *pg.DB) {
-	userID, exists := c.Get("user_id")
+	userIDInterface, exists := c.Get("user_id")
 	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+
+	userIDStr, ok := userIDInterface.(string)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "User ID format error"})
+		return
+	}
+
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid User ID"})
 		return
 	}
 
@@ -61,7 +73,7 @@ func CreateForum(c *gin.Context, db *pg.DB) {
 		CategoryID:  forums.CategoryID,
 	}
 
-	_, err := db.Model(forum).Insert()
+	_, err = db.Model(forum).Insert()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error":  "Failed to create forum",
@@ -71,7 +83,7 @@ func CreateForum(c *gin.Context, db *pg.DB) {
 	}
 
 	forumMember := &Models.ForumMembers{
-		UserID:  userID.(uuid.UUID),
+		UserID:  userID,
 		ForumID: forum.FID,
 		Role:    "admin",
 	}
@@ -130,15 +142,28 @@ func GetForumByID(c *gin.Context, db *pg.DB) {
 
 func UpdateForum(c *gin.Context, db *pg.DB) {
 	forumID := c.Param("forum_id")
-	userID, exists := c.Get("user_id")
+
+	userIDInterface, exists := c.Get("user_id")
 	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
 		return
 	}
 
+	userIDStr, ok := userIDInterface.(string)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "User ID format error"})
+		return
+	}
+
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid User ID"})
+		return
+	}
+
 	var forumMember Models.ForumMembers
-	err := db.Model(&forumMember).
-		Where("user_id = ?", userID.(uuid.UUID)).
+	err = db.Model(&forumMember).
+		Where("user_id = ?", userID).
 		Where("forum_id = ?", forumID).
 		Select()
 
@@ -188,15 +213,28 @@ func UpdateForum(c *gin.Context, db *pg.DB) {
 
 func DeleteForum(c *gin.Context, db *pg.DB) {
 	forumID := c.Param("forum_id")
-	userID, exists := c.Get("user_id")
+
+	userIDInterface, exists := c.Get("user_id")
 	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
 		return
 	}
 
+	userIDStr, ok := userIDInterface.(string)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "User ID format error"})
+		return
+	}
+
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid User ID"})
+		return
+	}
+
 	var forumMember Models.ForumMembers
-	err := db.Model(&forumMember).
-		Where("user_id = ?", userID.(uuid.UUID)).
+	err = db.Model(&forumMember).
+		Where("user_id = ?", userID).
 		Where("forum_id = ?", forumID).
 		Select()
 
@@ -244,19 +282,32 @@ func GetForumMembersByID(c *gin.Context, db *pg.DB) {
 
 func JoinForum(c *gin.Context, db *pg.DB) {
 	forumID := c.Param("forum_id")
-	userID, exists := c.Get("user_id")
+
+	userIDInterface, exists := c.Get("user_id")
 	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
 		return
 	}
 
+	userIDStr, ok := userIDInterface.(string)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "User ID format error"})
+		return
+	}
+
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid User ID"})
+		return
+	}
+
 	forumMember := &Models.ForumMembers{
-		UserID:  userID.(uuid.UUID),
+		UserID:  userID,
 		ForumID: uuid.MustParse(forumID),
 		Role:    "member",
 	}
 
-	_, err := db.Model(forumMember).Insert()
+	_, err = db.Model(forumMember).Insert()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error":  "Failed to join forum",
@@ -272,17 +323,30 @@ func JoinForum(c *gin.Context, db *pg.DB) {
 
 func LeaveForum(c *gin.Context, db *pg.DB) {
 	forumID := c.Param("forum_id")
-	userID, exists := c.Get("user_id")
+
+	userIDInterface, exists := c.Get("user_id")
 	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
 		return
 	}
 
+	userIDStr, ok := userIDInterface.(string)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "User ID format error"})
+		return
+	}
+
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid User ID"})
+		return
+	}
+
 	forumMember := &Models.ForumMembers{
-		UserID:  userID.(uuid.UUID),
+		UserID:  userID,
 		ForumID: uuid.MustParse(forumID),
 	}
-	_, err := db.Model(forumMember).Where("user_id = ? AND forum_id = ?", forumMember.UserID, forumMember.ForumID).Delete()
+	_, err = db.Model(forumMember).Where("user_id = ? AND forum_id = ?", forumMember.UserID, forumMember.ForumID).Delete()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error":  "Failed to leave forum",
