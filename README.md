@@ -321,11 +321,11 @@ Authorization: Bearer <access_token_here>
     {
         "post_id": 123,
         "body": "This is my comment.",
-        "parent_id": 0
+        "parent_comment_id": 0
     }
     ```
   * `post_id`: Integer ID of the post.
-  * `parent_id`: `0` for top-level comments, or `Integer ID` of another comment to reply.
+  * `parent_comment_id`: `0` for top-level comments, or `Integer ID` of another comment to reply.
 
 ### Delete Comment
 
