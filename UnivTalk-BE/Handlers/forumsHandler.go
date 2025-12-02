@@ -1,6 +1,7 @@
 package Handlers
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	"time"
@@ -9,11 +10,29 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/go-pg/pg/v10"
 	"github.com/google/uuid"
+	"github.com/patrickmn/go-cache"
 )
 
-func GetCategories(c *gin.Context, db *pg.DB) {
-	var categories []Models.Categories
+func isSystemAdmin(db *pg.DB, userID uuid.UUID) (bool, error) {
+	var user Models.Users
+	err := db.Model(&user).Column("is_admin").Where("uid = ?", userID).Select()
+	if err != nil {
+		return false, err
+	}
+	return user.IsAdmin, nil
+}
 
+func GetCategories(c *gin.Context, db *pg.DB, ch *cache.Cache) {
+	cacheKey := "categories_all"
+
+	if saved, found := ch.Get(cacheKey); found {
+		c.JSON(http.StatusOK, gin.H{
+			"categories": saved,
+		})
+		return
+	}
+
+	var categories []Models.Categories
 	err := db.Model(&categories).Select()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -24,12 +43,14 @@ func GetCategories(c *gin.Context, db *pg.DB) {
 		return
 	}
 
+	ch.Set(cacheKey, categories, 1*time.Hour)
+
 	c.JSON(http.StatusOK, gin.H{
 		"categories": categories,
 	})
 }
 
-func CreateForum(c *gin.Context, db *pg.DB) {
+func CreateForum(c *gin.Context, db *pg.DB, ch *cache.Cache) {
 	userIDInterface, exists := c.Get("user_id")
 	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
@@ -97,14 +118,24 @@ func CreateForum(c *gin.Context, db *pg.DB) {
 		return
 	}
 
+	ch.Delete("forums_all")
+
 	c.JSON(http.StatusCreated, gin.H{
 		"message": "Forum created successfully",
 	})
 }
 
-func GetForums(c *gin.Context, db *pg.DB) {
-	var forums []Models.Forums
+func GetForums(c *gin.Context, db *pg.DB, ch *cache.Cache) {
+	cacheKey := "forums_all"
 
+	if saved, found := ch.Get(cacheKey); found {
+		c.JSON(http.StatusOK, gin.H{
+			"forums": saved,
+		})
+		return
+	}
+
+	var forums []Models.Forums
 	err := db.Model(&forums).Select()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -115,15 +146,25 @@ func GetForums(c *gin.Context, db *pg.DB) {
 		return
 	}
 
+	ch.Set(cacheKey, forums, 10*time.Minute)
+
 	c.JSON(http.StatusOK, gin.H{
 		"forums": forums,
 	})
 }
 
-func GetForumByID(c *gin.Context, db *pg.DB) {
+func GetForumByID(c *gin.Context, db *pg.DB, ch *cache.Cache) {
 	forumID := c.Param("forum_id")
-	var forum Models.Forums
+	cacheKey := fmt.Sprintf("forum_%s", forumID)
 
+	if saved, found := ch.Get(cacheKey); found {
+		c.JSON(http.StatusOK, gin.H{
+			"forum": saved,
+		})
+		return
+	}
+
+	var forum Models.Forums
 	err := db.Model(&forum).Where("fid = ?", forumID).Select()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -135,12 +176,14 @@ func GetForumByID(c *gin.Context, db *pg.DB) {
 		return
 	}
 
+	ch.Set(cacheKey, forum, 30*time.Minute)
+
 	c.JSON(http.StatusOK, gin.H{
 		"forum": forum,
 	})
 }
 
-func UpdateForum(c *gin.Context, db *pg.DB) {
+func UpdateForum(c *gin.Context, db *pg.DB, ch *cache.Cache) {
 	forumID := c.Param("forum_id")
 
 	userIDInterface, exists := c.Get("user_id")
@@ -161,13 +204,27 @@ func UpdateForum(c *gin.Context, db *pg.DB) {
 		return
 	}
 
-	var forumMember Models.ForumMembers
-	err = db.Model(&forumMember).
-		Where("user_id = ?", userID).
-		Where("forum_id = ?", forumID).
-		Select()
+	isSysAdmin, errSys := isSystemAdmin(db, userID)
+	if errSys != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to verify user privileges"})
+		return
+	}
 
-	if err != nil || forumMember.Role != "admin" {
+	hasAccess := isSysAdmin
+
+	if !hasAccess {
+		var forumMember Models.ForumMembers
+		err := db.Model(&forumMember).
+			Where("user_id = ?", userID).
+			Where("forum_id = ?", forumID).
+			Select()
+
+		if err == nil && forumMember.Role == "admin" {
+			hasAccess = true
+		}
+	}
+
+	if !hasAccess {
 		c.JSON(http.StatusForbidden, gin.H{
 			"error":  "Forbidden",
 			"detail": "You do not have permission to update this forum",
@@ -206,12 +263,15 @@ func UpdateForum(c *gin.Context, db *pg.DB) {
 		return
 	}
 
+	ch.Delete("forums_all")
+	ch.Delete(fmt.Sprintf("forum_%s", forumID))
+
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Forum updated successfully",
 	})
 }
 
-func DeleteForum(c *gin.Context, db *pg.DB) {
+func DeleteForum(c *gin.Context, db *pg.DB, ch *cache.Cache) {
 	forumID := c.Param("forum_id")
 
 	userIDInterface, exists := c.Get("user_id")
@@ -232,13 +292,27 @@ func DeleteForum(c *gin.Context, db *pg.DB) {
 		return
 	}
 
-	var forumMember Models.ForumMembers
-	err = db.Model(&forumMember).
-		Where("user_id = ?", userID).
-		Where("forum_id = ?", forumID).
-		Select()
+	isSysAdmin, errSys := isSystemAdmin(db, userID)
+	if errSys != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to verify user privileges"})
+		return
+	}
 
-	if err != nil || forumMember.Role != "admin" {
+	hasAccess := isSysAdmin
+
+	if !hasAccess {
+		var forumMember Models.ForumMembers
+		err := db.Model(&forumMember).
+			Where("user_id = ?", userID).
+			Where("forum_id = ?", forumID).
+			Select()
+
+		if err == nil && forumMember.Role == "admin" {
+			hasAccess = true
+		}
+	}
+
+	if !hasAccess {
 		c.JSON(http.StatusForbidden, gin.H{
 			"error":  "Forbidden",
 			"detail": "You do not have permission to delete this forum",
@@ -256,12 +330,15 @@ func DeleteForum(c *gin.Context, db *pg.DB) {
 		return
 	}
 
+	ch.Delete("forums_all")
+	ch.Delete(fmt.Sprintf("forum_%s", forumID))
+
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Forum deleted successfully",
 	})
 }
 
-func GetForumMembersByID(c *gin.Context, db *pg.DB) {
+func GetForumMembersByID(c *gin.Context, db *pg.DB, ch *cache.Cache) {
 	forumID := c.Param("forum_id")
 	var forumMembers []Models.ForumMembers
 
@@ -280,7 +357,7 @@ func GetForumMembersByID(c *gin.Context, db *pg.DB) {
 	})
 }
 
-func JoinForum(c *gin.Context, db *pg.DB) {
+func JoinForum(c *gin.Context, db *pg.DB, ch *cache.Cache) {
 	forumID := c.Param("forum_id")
 
 	userIDInterface, exists := c.Get("user_id")
@@ -321,7 +398,7 @@ func JoinForum(c *gin.Context, db *pg.DB) {
 	})
 }
 
-func LeaveForum(c *gin.Context, db *pg.DB) {
+func LeaveForum(c *gin.Context, db *pg.DB, ch *cache.Cache) {
 	forumID := c.Param("forum_id")
 
 	userIDInterface, exists := c.Get("user_id")

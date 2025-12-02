@@ -17,6 +17,7 @@ type Users struct {
 	Password      string    `json:"password"`
 	Status        string    `json:"status"`
 	Salt          string    `json:"salt"`
+	IsAdmin       bool      `json:"is_admin"`
 }
 
 type Payload struct {

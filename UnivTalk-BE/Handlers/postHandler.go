@@ -1,6 +1,7 @@
 package Handlers
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	"time"
@@ -9,10 +10,20 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/go-pg/pg/v10"
 	"github.com/google/uuid"
+	"github.com/patrickmn/go-cache"
 )
 
-func GetForumPosts(c *gin.Context, db *pg.DB) {
+func GetForumPosts(c *gin.Context, db *pg.DB, ch *cache.Cache) {
 	forumID := c.Param("forum_id")
+	cacheKey := fmt.Sprintf("posts_forum_%s", forumID)
+
+	if saved, found := ch.Get(cacheKey); found {
+		c.JSON(http.StatusOK, gin.H{
+			"posts": saved,
+		})
+		return
+	}
+
 	var posts []Models.Posts
 
 	err := db.Model(&posts).Where("forum_id = ?", forumID).Order("created_at DESC").Select()
@@ -25,13 +36,24 @@ func GetForumPosts(c *gin.Context, db *pg.DB) {
 		return
 	}
 
+	ch.Set(cacheKey, posts, 5*time.Minute)
+
 	c.JSON(http.StatusOK, gin.H{
 		"posts": posts,
 	})
 }
 
-func GetForumPostsByID(c *gin.Context, db *pg.DB) {
+func GetForumPostsByID(c *gin.Context, db *pg.DB, ch *cache.Cache) {
 	postID := c.Param("post_id")
+	cacheKey := fmt.Sprintf("post_%s", postID)
+
+	if saved, found := ch.Get(cacheKey); found {
+		c.JSON(http.StatusOK, gin.H{
+			"post": saved,
+		})
+		return
+	}
+
 	var post Models.Posts
 
 	err := db.Model(&post).Where("id = ?", postID).Select()
@@ -45,12 +67,14 @@ func GetForumPostsByID(c *gin.Context, db *pg.DB) {
 		return
 	}
 
+	ch.Set(cacheKey, post, 10*time.Minute)
+
 	c.JSON(http.StatusOK, gin.H{
 		"post": post,
 	})
 }
 
-func CreatePost(c *gin.Context, db *pg.DB) {
+func CreatePost(c *gin.Context, db *pg.DB, ch *cache.Cache) {
 	var post Models.Posts
 	if err := c.ShouldBindJSON(&post); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -100,13 +124,15 @@ func CreatePost(c *gin.Context, db *pg.DB) {
 		return
 	}
 
+	ch.Delete(fmt.Sprintf("posts_forum_%s", post.ForumID))
+
 	c.JSON(http.StatusCreated, gin.H{
 		"message": "Post created successfully",
 		"post":    post,
 	})
 }
 
-func DeletePost(c *gin.Context, db *pg.DB) {
+func DeletePost(c *gin.Context, db *pg.DB, ch *cache.Cache) {
 	postID := c.Param("post_id")
 
 	userIDInterface, exists := c.Get("user_id")
@@ -134,7 +160,9 @@ func DeletePost(c *gin.Context, db *pg.DB) {
 		return
 	}
 
-	if post.UserID != userID {
+	isSysAdmin, _ := isSystemAdmin(db, userID)
+
+	if post.UserID != userID && !isSysAdmin {
 		c.JSON(http.StatusForbidden, gin.H{"error": "You are not allowed to delete this post"})
 		return
 	}
@@ -149,12 +177,15 @@ func DeletePost(c *gin.Context, db *pg.DB) {
 		return
 	}
 
+	ch.Delete(fmt.Sprintf("posts_forum_%s", post.ForumID))
+	ch.Delete(fmt.Sprintf("post_%s", postID))
+
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Post deleted successfully",
 	})
 }
 
-func UpdatePost(c *gin.Context, db *pg.DB) {
+func UpdatePost(c *gin.Context, db *pg.DB, ch *cache.Cache) {
 	postID := c.Param("post_id")
 
 	userIDInterface, exists := c.Get("user_id")
@@ -222,13 +253,16 @@ func UpdatePost(c *gin.Context, db *pg.DB) {
 		return
 	}
 
+	ch.Delete(fmt.Sprintf("posts_forum_%s", existingPost.ForumID))
+	ch.Delete(fmt.Sprintf("post_%s", postID))
+
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Post updated successfully",
 		"post":    post,
 	})
 }
 
-func CreateComment(c *gin.Context, db *pg.DB) {
+func CreateComment(c *gin.Context, db *pg.DB, ch *cache.Cache) {
 	var comment Models.Comments
 	if err := c.ShouldBindJSON(&comment); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -276,13 +310,15 @@ func CreateComment(c *gin.Context, db *pg.DB) {
 		return
 	}
 
+	ch.Delete(fmt.Sprintf("comments_post_%d", comment.PostID))
+
 	c.JSON(http.StatusCreated, gin.H{
 		"message": "Comment created",
 		"comment": comment,
 	})
 }
 
-func DeleteComment(c *gin.Context, db *pg.DB) {
+func DeleteComment(c *gin.Context, db *pg.DB, ch *cache.Cache) {
 	commentID := c.Param("comment_id")
 
 	userIDInterface, exists := c.Get("user_id")
@@ -310,7 +346,9 @@ func DeleteComment(c *gin.Context, db *pg.DB) {
 		return
 	}
 
-	if comment.UserID != userID {
+	isSysAdmin, _ := isSystemAdmin(db, userID)
+
+	if comment.UserID != userID && !isSysAdmin {
 		c.JSON(http.StatusForbidden, gin.H{"error": "You are not allowed to delete this comment"})
 		return
 	}
@@ -325,13 +363,24 @@ func DeleteComment(c *gin.Context, db *pg.DB) {
 		return
 	}
 
+	ch.Delete(fmt.Sprintf("comments_post_%d", comment.PostID))
+
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Comment deleted successfully",
 	})
 }
 
-func GetPostComments(c *gin.Context, db *pg.DB) {
+func GetPostComments(c *gin.Context, db *pg.DB, ch *cache.Cache) {
 	postID := c.Param("post_id")
+	cacheKey := fmt.Sprintf("comments_post_%s", postID)
+
+	if saved, found := ch.Get(cacheKey); found {
+		c.JSON(http.StatusOK, gin.H{
+			"comments": saved,
+		})
+		return
+	}
+
 	var comments []Models.Comments
 
 	err := db.Model(&comments).Where("post_id = ?", postID).Order("created_at ASC").Select()
@@ -343,6 +392,8 @@ func GetPostComments(c *gin.Context, db *pg.DB) {
 		log.Printf("Get Post Comments Failed: %v", err.Error())
 		return
 	}
+
+	ch.Set(cacheKey, comments, 5*time.Minute)
 
 	c.JSON(http.StatusOK, gin.H{
 		"comments": comments,

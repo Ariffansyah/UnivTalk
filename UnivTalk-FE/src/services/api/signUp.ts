@@ -7,7 +7,7 @@ export async function signUp(
   university: string,
   status: string,
 ): Promise<{ success: boolean; message: string; details?: any }> {
-  const res = await fetch("http://localhost:8080/signup", {
+  const res = await fetch("https://api.arpthef.my.id/signup", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
