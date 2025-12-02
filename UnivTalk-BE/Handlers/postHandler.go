@@ -255,18 +255,18 @@ func CreateComment(c *gin.Context, db *pg.DB) {
 
 	comment.UserID = userID
 
-	if comment.ParentID != 0 {
+	if comment.ParentCommentID != 0 {
 		var parentComment Models.Comments
 		err := db.Model(&parentComment).
-			Where("id = ?", comment.ParentID).
+			Where("id = ?", comment.ParentCommentID).
 			Where("post_id = ?", comment.PostID).
 			Select()
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Parent comment not found"})
 			return
 		}
-		if parentComment.ParentID != 0 {
-			comment.ParentID = parentComment.ParentID
+		if parentComment.ParentCommentID != 0 {
+			comment.ParentCommentID = parentComment.ParentCommentID
 		}
 	}
 
