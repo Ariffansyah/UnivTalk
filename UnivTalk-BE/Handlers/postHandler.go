@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/Ariffansyah/UnivTalk/Models"
@@ -14,8 +15,15 @@ import (
 )
 
 func GetForumPosts(c *gin.Context, db *pg.DB, ch *cache.Cache) {
-	forumID := c.Param("forum_id")
-	cacheKey := fmt.Sprintf("posts_forum_%s", forumID)
+	forumIDStr := c.Param("forum_id")
+
+	forumID, err := uuid.Parse(forumIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid Forum ID format"})
+		return
+	}
+
+	cacheKey := fmt.Sprintf("posts_forum_%s", forumIDStr)
 
 	if saved, found := ch.Get(cacheKey); found {
 		c.JSON(http.StatusOK, gin.H{
@@ -26,7 +34,7 @@ func GetForumPosts(c *gin.Context, db *pg.DB, ch *cache.Cache) {
 
 	var posts []Models.Posts
 
-	err := db.Model(&posts).Where("forum_id = ?", forumID).Order("created_at DESC").Select()
+	err = db.Model(&posts).Where("forum_id = ?", forumID).Order("created_at DESC").Select()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error":  "Failed to retrieve posts",
@@ -44,8 +52,15 @@ func GetForumPosts(c *gin.Context, db *pg.DB, ch *cache.Cache) {
 }
 
 func GetForumPostsByID(c *gin.Context, db *pg.DB, ch *cache.Cache) {
-	postID := c.Param("post_id")
-	cacheKey := fmt.Sprintf("post_%s", postID)
+	postIDStr := c.Param("post_id")
+
+	postID, err := strconv.Atoi(postIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid Post ID format"})
+		return
+	}
+
+	cacheKey := fmt.Sprintf("post_%d", postID)
 
 	if saved, found := ch.Get(cacheKey); found {
 		c.JSON(http.StatusOK, gin.H{
@@ -56,7 +71,7 @@ func GetForumPostsByID(c *gin.Context, db *pg.DB, ch *cache.Cache) {
 
 	var post Models.Posts
 
-	err := db.Model(&post).Where("id = ?", postID).Select()
+	err = db.Model(&post).Where("id = ?", postID).Select()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error":  "Failed to retrieve post",
@@ -133,7 +148,13 @@ func CreatePost(c *gin.Context, db *pg.DB, ch *cache.Cache) {
 }
 
 func DeletePost(c *gin.Context, db *pg.DB, ch *cache.Cache) {
-	postID := c.Param("post_id")
+	postIDStr := c.Param("post_id")
+
+	postID, err := strconv.Atoi(postIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid Post ID format"})
+		return
+	}
 
 	userIDInterface, exists := c.Get("user_id")
 	if !exists {
@@ -167,7 +188,7 @@ func DeletePost(c *gin.Context, db *pg.DB, ch *cache.Cache) {
 		return
 	}
 
-	_, err = db.Model(&post).Where("id = ?", postID).Delete()
+	res, err := db.Model(&post).Where("id = ?", postID).Delete()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error":  "Failed to delete post",
@@ -177,8 +198,15 @@ func DeletePost(c *gin.Context, db *pg.DB, ch *cache.Cache) {
 		return
 	}
 
+	if res.RowsAffected() == 0 {
+		c.JSON(http.StatusNotFound, gin.H{
+			"error": "Post not found or already deleted",
+		})
+		return
+	}
+
 	ch.Delete(fmt.Sprintf("posts_forum_%s", post.ForumID))
-	ch.Delete(fmt.Sprintf("post_%s", postID))
+	ch.Delete(fmt.Sprintf("post_%d", postID))
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Post deleted successfully",
@@ -186,7 +214,13 @@ func DeletePost(c *gin.Context, db *pg.DB, ch *cache.Cache) {
 }
 
 func UpdatePost(c *gin.Context, db *pg.DB, ch *cache.Cache) {
-	postID := c.Param("post_id")
+	postIDStr := c.Param("post_id")
+
+	postID, err := strconv.Atoi(postIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid Post ID format"})
+		return
+	}
 
 	userIDInterface, exists := c.Get("user_id")
 	if !exists {
@@ -254,7 +288,7 @@ func UpdatePost(c *gin.Context, db *pg.DB, ch *cache.Cache) {
 	}
 
 	ch.Delete(fmt.Sprintf("posts_forum_%s", existingPost.ForumID))
-	ch.Delete(fmt.Sprintf("post_%s", postID))
+	ch.Delete(fmt.Sprintf("post_%d", postID))
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Post updated successfully",
@@ -319,7 +353,13 @@ func CreateComment(c *gin.Context, db *pg.DB, ch *cache.Cache) {
 }
 
 func DeleteComment(c *gin.Context, db *pg.DB, ch *cache.Cache) {
-	commentID := c.Param("comment_id")
+	commentIDStr := c.Param("comment_id")
+
+	commentID, err := strconv.Atoi(commentIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid Comment ID format"})
+		return
+	}
 
 	userIDInterface, exists := c.Get("user_id")
 	if !exists {
@@ -353,13 +393,20 @@ func DeleteComment(c *gin.Context, db *pg.DB, ch *cache.Cache) {
 		return
 	}
 
-	_, err = db.Model(&comment).Where("id = ?", commentID).Delete()
+	res, err := db.Model(&comment).Where("id = ?", commentID).Delete()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error":  "Failed to delete comment",
 			"detail": err.Error(),
 		})
 		log.Printf("Delete Comment Failed: %v", err.Error())
+		return
+	}
+
+	if res.RowsAffected() == 0 {
+		c.JSON(http.StatusNotFound, gin.H{
+			"error": "Comment not found or already deleted",
+		})
 		return
 	}
 
@@ -371,8 +418,15 @@ func DeleteComment(c *gin.Context, db *pg.DB, ch *cache.Cache) {
 }
 
 func GetPostComments(c *gin.Context, db *pg.DB, ch *cache.Cache) {
-	postID := c.Param("post_id")
-	cacheKey := fmt.Sprintf("comments_post_%s", postID)
+	postIDStr := c.Param("post_id")
+
+	postID, err := strconv.Atoi(postIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid Post ID format"})
+		return
+	}
+
+	cacheKey := fmt.Sprintf("comments_post_%d", postID)
 
 	if saved, found := ch.Get(cacheKey); found {
 		c.JSON(http.StatusOK, gin.H{
@@ -383,7 +437,7 @@ func GetPostComments(c *gin.Context, db *pg.DB, ch *cache.Cache) {
 
 	var comments []Models.Comments
 
-	err := db.Model(&comments).Where("post_id = ?", postID).Order("created_at ASC").Select()
+	err = db.Model(&comments).Where("post_id = ?", postID).Order("created_at ASC").Select()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error":  "Failed to retrieve comments",

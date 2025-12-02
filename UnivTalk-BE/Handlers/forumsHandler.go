@@ -154,8 +154,15 @@ func GetForums(c *gin.Context, db *pg.DB, ch *cache.Cache) {
 }
 
 func GetForumByID(c *gin.Context, db *pg.DB, ch *cache.Cache) {
-	forumID := c.Param("forum_id")
-	cacheKey := fmt.Sprintf("forum_%s", forumID)
+	forumIDStr := c.Param("forum_id")
+
+	forumID, err := uuid.Parse(forumIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid Forum ID format"})
+		return
+	}
+
+	cacheKey := fmt.Sprintf("forum_%s", forumIDStr)
 
 	if saved, found := ch.Get(cacheKey); found {
 		c.JSON(http.StatusOK, gin.H{
@@ -165,7 +172,7 @@ func GetForumByID(c *gin.Context, db *pg.DB, ch *cache.Cache) {
 	}
 
 	var forum Models.Forums
-	err := db.Model(&forum).Where("fid = ?", forumID).Select()
+	err = db.Model(&forum).Where("fid = ?", forumID).Select()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error":  "Failed to retrieve forum",
@@ -184,7 +191,13 @@ func GetForumByID(c *gin.Context, db *pg.DB, ch *cache.Cache) {
 }
 
 func UpdateForum(c *gin.Context, db *pg.DB, ch *cache.Cache) {
-	forumID := c.Param("forum_id")
+	forumIDStr := c.Param("forum_id")
+
+	forumID, err := uuid.Parse(forumIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid Forum ID format"})
+		return
+	}
 
 	userIDInterface, exists := c.Get("user_id")
 	if !exists {
@@ -264,7 +277,7 @@ func UpdateForum(c *gin.Context, db *pg.DB, ch *cache.Cache) {
 	}
 
 	ch.Delete("forums_all")
-	ch.Delete(fmt.Sprintf("forum_%s", forumID))
+	ch.Delete(fmt.Sprintf("forum_%s", forumIDStr))
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Forum updated successfully",
@@ -272,7 +285,13 @@ func UpdateForum(c *gin.Context, db *pg.DB, ch *cache.Cache) {
 }
 
 func DeleteForum(c *gin.Context, db *pg.DB, ch *cache.Cache) {
-	forumID := c.Param("forum_id")
+	forumIDStr := c.Param("forum_id")
+
+	forumID, err := uuid.Parse(forumIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid Forum ID format"})
+		return
+	}
 
 	userIDInterface, exists := c.Get("user_id")
 	if !exists {
@@ -320,8 +339,8 @@ func DeleteForum(c *gin.Context, db *pg.DB, ch *cache.Cache) {
 		return
 	}
 
-	forum := &Models.Forums{FID: uuid.MustParse(forumID)}
-	_, err = db.Model(forum).Where("fid = ?", forumID).Delete()
+	forum := &Models.Forums{FID: forumID}
+	res, err := db.Model(forum).Where("fid = ?", forumID).Delete()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error":  "Failed to delete forum",
@@ -330,8 +349,15 @@ func DeleteForum(c *gin.Context, db *pg.DB, ch *cache.Cache) {
 		return
 	}
 
+	if res.RowsAffected() == 0 {
+		c.JSON(http.StatusNotFound, gin.H{
+			"error": "Forum not found or already deleted",
+		})
+		return
+	}
+
 	ch.Delete("forums_all")
-	ch.Delete(fmt.Sprintf("forum_%s", forumID))
+	ch.Delete(fmt.Sprintf("forum_%s", forumIDStr))
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Forum deleted successfully",
@@ -339,10 +365,17 @@ func DeleteForum(c *gin.Context, db *pg.DB, ch *cache.Cache) {
 }
 
 func GetForumMembersByID(c *gin.Context, db *pg.DB, ch *cache.Cache) {
-	forumID := c.Param("forum_id")
+	forumIDStr := c.Param("forum_id")
+
+	forumID, err := uuid.Parse(forumIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid Forum ID format"})
+		return
+	}
+
 	var forumMembers []Models.ForumMembers
 
-	err := db.Model(&forumMembers).Where("forum_id = ?", forumID).Select()
+	err = db.Model(&forumMembers).Where("forum_id = ?", forumID).Select()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error":  "Failed to retrieve forum members",
@@ -358,7 +391,13 @@ func GetForumMembersByID(c *gin.Context, db *pg.DB, ch *cache.Cache) {
 }
 
 func JoinForum(c *gin.Context, db *pg.DB, ch *cache.Cache) {
-	forumID := c.Param("forum_id")
+	forumIDStr := c.Param("forum_id")
+
+	forumID, err := uuid.Parse(forumIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid Forum ID format"})
+		return
+	}
 
 	userIDInterface, exists := c.Get("user_id")
 	if !exists {
@@ -380,7 +419,7 @@ func JoinForum(c *gin.Context, db *pg.DB, ch *cache.Cache) {
 
 	forumMember := &Models.ForumMembers{
 		UserID:  userID,
-		ForumID: uuid.MustParse(forumID),
+		ForumID: forumID,
 		Role:    "member",
 	}
 
@@ -399,7 +438,13 @@ func JoinForum(c *gin.Context, db *pg.DB, ch *cache.Cache) {
 }
 
 func LeaveForum(c *gin.Context, db *pg.DB, ch *cache.Cache) {
-	forumID := c.Param("forum_id")
+	forumIDStr := c.Param("forum_id")
+
+	forumID, err := uuid.Parse(forumIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid Forum ID format"})
+		return
+	}
 
 	userIDInterface, exists := c.Get("user_id")
 	if !exists {
@@ -421,7 +466,7 @@ func LeaveForum(c *gin.Context, db *pg.DB, ch *cache.Cache) {
 
 	forumMember := &Models.ForumMembers{
 		UserID:  userID,
-		ForumID: uuid.MustParse(forumID),
+		ForumID: forumID,
 	}
 	_, err = db.Model(forumMember).Where("user_id = ? AND forum_id = ?", forumMember.UserID, forumMember.ForumID).Delete()
 	if err != nil {
