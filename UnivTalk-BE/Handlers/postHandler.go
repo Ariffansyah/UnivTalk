@@ -277,13 +277,20 @@ func UpdatePost(c *gin.Context, db *pg.DB, ch *cache.Cache) {
 
 	post.UpdatedAt = time.Now()
 
-	_, err = db.Model(&post).Column("title", "body", "updated_at").Where("id = ?", postID).Update()
+	res, err := db.Model(&post).Column("title", "body", "updated_at").Where("id = ?", postID).Update()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error":  "Failed to update post",
 			"detail": err.Error(),
 		})
 		log.Printf("Update Post Failed: %v", err.Error())
+		return
+	}
+
+	if res.RowsAffected() == 0 {
+		c.JSON(http.StatusNotFound, gin.H{
+			"error": "Post not found or already deleted",
+		})
 		return
 	}
 

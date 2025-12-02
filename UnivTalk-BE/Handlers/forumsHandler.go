@@ -264,7 +264,7 @@ func UpdateForum(c *gin.Context, db *pg.DB, ch *cache.Cache) {
 
 	forums.UpdatedAt = time.Now()
 
-	_, err = db.Model(&forums).
+	res, err := db.Model(&forums).
 		Column("title", "description", "category_id", "updated_at").
 		Where("fid = ?", forumID).
 		Update()
@@ -272,6 +272,13 @@ func UpdateForum(c *gin.Context, db *pg.DB, ch *cache.Cache) {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error":  "Failed to update forum",
 			"detail": err.Error(),
+		})
+		return
+	}
+
+	if res.RowsAffected() == 0 {
+		c.JSON(http.StatusNotFound, gin.H{
+			"error": "Forum not found or already deleted",
 		})
 		return
 	}
