@@ -170,6 +170,7 @@ func main() {
 			posts.POST("/:post_id/upvote", func(c *gin.Context) { Handlers.UpVotePost(c, db, cacheData) })
 			posts.POST("/:post_id/downvote", func(c *gin.Context) { Handlers.DownVotePost(c, db, cacheData) })
 			posts.DELETE("/:post_id/vote", func(c *gin.Context) { Handlers.RemoveVotePost(c, db, cacheData) })
+			posts.GET("/:post_id/vote", func(c *gin.Context) { Handlers.GetPostVotes(c, db) })
 		}
 
 		// GROUP: COMMENTS
@@ -182,6 +183,7 @@ func main() {
 			comments.POST("/:comment_id/upvote", func(c *gin.Context) { Handlers.UpVoteComment(c, db, cacheData) })
 			comments.POST("/:comment_id/downvote", func(c *gin.Context) { Handlers.DownVoteComment(c, db, cacheData) })
 			comments.DELETE("/:comment_id/vote", func(c *gin.Context) { Handlers.RemoveVoteComment(c, db, cacheData) })
+			comments.GET("/:comment_id/vote", func(c *gin.Context) { Handlers.GetCommentVotes(c, db) })
 		}
 	}
 

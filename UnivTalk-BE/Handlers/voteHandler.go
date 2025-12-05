@@ -202,3 +202,71 @@ func RemoveVoteComment(c *gin.Context, db *pg.DB, ch *cache.Cache) {
 
 	c.JSON(http.StatusOK, gin.H{"message": "Vote removed successfully"})
 }
+
+func GetPostVotes(c *gin.Context, db *pg.DB) {
+	postIDStr := c.Param("post_id")
+	postID, err := strconv.Atoi(postIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid Post ID format"})
+		return
+	}
+
+	var upVotes int
+	var downVotes int
+
+	upVotes, err = db.Model(&Models.Votes{}).
+		Where("post_id = ? AND value = 1", postID).
+		Count()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to count upvotes", "detail": err.Error()})
+		return
+	}
+
+	downVotes, err = db.Model(&Models.Votes{}).
+		Where("post_id = ? AND value = -1", postID).
+		Count()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to count downvotes", "detail": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"post_id":    postID,
+		"up_votes":   upVotes,
+		"down_votes": downVotes,
+	})
+}
+
+func GetCommentVotes(c *gin.Context, db *pg.DB) {
+	commentIDStr := c.Param("comment_id")
+	commentID, err := strconv.Atoi(commentIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid Comment ID format"})
+		return
+	}
+
+	var upVotes int
+	var downVotes int
+
+	upVotes, err = db.Model(&Models.Votes{}).
+		Where("comment_id = ? AND value = 1", commentID).
+		Count()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to count upvotes", "detail": err.Error()})
+		return
+	}
+
+	downVotes, err = db.Model(&Models.Votes{}).
+		Where("comment_id = ? AND value = -1", commentID).
+		Count()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to count downvotes", "detail": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"comment_id": commentID,
+		"up_votes":   upVotes,
+		"down_votes": downVotes,
+	})
+}
