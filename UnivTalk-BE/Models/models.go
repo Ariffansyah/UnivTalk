@@ -62,3 +62,11 @@ type Categories struct {
 	ID   int    `json:"id"`
 	Name string `json:"name"`
 }
+
+type Votes struct {
+	ID        int       `json:"id"`
+	UserID    uuid.UUID `json:"user_id"`
+	PostID    *int      `json:"post_id,omitempty"`
+	CommentID *int      `json:"comment_id,omitempty"`
+	Value     int       `json:"value"`
+}

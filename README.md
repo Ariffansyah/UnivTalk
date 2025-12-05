@@ -331,3 +331,13 @@ Authorization: Bearer <access_token_here>
 
   * **Endpoint:** `DELETE /comments/:comment_id`
   * **Auth:** Bearer Token
+
+### Vote (Post or Comment)
+
+  * **UpVote Endpoint:** `POST /posts/:post_id/upvote` or `POST /comments/:comment_id/upvote`
+  * **DownVote Endpoint:** `POST /posts/:post_id/downvote` or `POST /comments/:comment_id/downvote`
+  * **Remove Vote Endpoint:** `POST /posts/:post_id/removevote` or `POST /comments/:comment_id/removevote`
+  * **Auth:** Bearer Token
+  * **Param:** `:post_id` is an **Integer**; `:comment_id` is an **Integer**.
+  * **Description:** Upvote, Downvote, or Remove Vote on a Post or Comment.
+

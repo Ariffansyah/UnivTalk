@@ -166,6 +166,10 @@ func main() {
 			posts.PUT("/:post_id", func(c *gin.Context) { Handlers.UpdatePost(c, db, cacheData) })
 			posts.DELETE("/:post_id", func(c *gin.Context) { Handlers.DeletePost(c, db, cacheData) })
 			posts.GET("/:post_id/comments", func(c *gin.Context) { Handlers.GetPostComments(c, db, cacheData) })
+
+			posts.POST("/:post_id/upvote", func(c *gin.Context) { Handlers.UpVotePost(c, db, cacheData) })
+			posts.POST("/:post_id/downvote", func(c *gin.Context) { Handlers.DownVotePost(c, db, cacheData) })
+			posts.DELETE("/:post_id/vote", func(c *gin.Context) { Handlers.RemoveVotePost(c, db, cacheData) })
 		}
 
 		// GROUP: COMMENTS
@@ -174,7 +178,12 @@ func main() {
 		{
 			comments.POST("/", func(c *gin.Context) { Handlers.CreateComment(c, db, cacheData) })
 			comments.DELETE("/:comment_id", func(c *gin.Context) { Handlers.DeleteComment(c, db, cacheData) })
+
+			comments.POST("/:comment_id/upvote", func(c *gin.Context) { Handlers.UpVoteComment(c, db, cacheData) })
+			comments.POST("/:comment_id/downvote", func(c *gin.Context) { Handlers.DownVoteComment(c, db, cacheData) })
+			comments.DELETE("/:comment_id/vote", func(c *gin.Context) { Handlers.RemoveVoteComment(c, db, cacheData) })
 		}
 	}
+
 	router.Run()
 }
