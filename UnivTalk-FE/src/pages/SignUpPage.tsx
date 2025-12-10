@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { fetchUniversitySuggestions } from "../services/api/uniList";
 import { signUp } from "../services/api/signUp";
 
@@ -93,6 +94,9 @@ const SignUpPage: React.FC = () => {
 
   const characters = /[!@#$%^&*(),.?":{}|<>]/;
 
+  const navigate = useNavigate();
+
+
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setErrorMsg("");
@@ -149,17 +153,8 @@ const SignUpPage: React.FC = () => {
     )
       .then((response) => {
         if (response.success) {
-          alert("Registration successful! Please sign in.");
-          setForm({
-            username: "",
-            firstName: "",
-            lastName: "",
-            email: "",
-            password: "",
-            confirmPassword: "",
-            university: "",
-            status: "active",
-          });
+          alert("Registration successful!");
+          navigate("/signin");
         } else {
           if (response.details && response.details.code === "23505") {
             setErrorMsg("Username or email already exists.");
