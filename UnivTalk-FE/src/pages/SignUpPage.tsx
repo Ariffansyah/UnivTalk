@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { fetchUniversitySuggestions } from "../services/api/uniList";
 import { signUp } from "../services/api/signUp";
 
@@ -92,6 +93,8 @@ const SignUpPage: React.FC = () => {
   };
 
   const characters = /[!@#$%^&*(),.?":{}|<>]/;
+
+  const navigate = useNavigate();
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -333,6 +336,16 @@ const SignUpPage: React.FC = () => {
       >
         Register
       </button>
+
+      <p className="text-center mt-4 text-sm text-gray-600">
+        Already have an account?{" "}
+        <span
+          onClick={() => navigate("/signin")}
+          className="text-blue-600 hover:underline cursor-pointer"
+        >
+          Sign In
+        </span>
+      </p>
     </form>
   );
 };
