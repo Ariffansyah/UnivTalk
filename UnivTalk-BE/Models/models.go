@@ -45,6 +45,8 @@ type Posts struct {
 	UserID    uuid.UUID `json:"user_id"`
 	Title     string    `json:"title"`
 	Body      string    `json:"body"`
+	MediaURL  string    `json:"media_url"`
+	MediaType string    `json:"media_type"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 }

@@ -75,6 +75,8 @@ CREATE TABLE posts (
     user_id UUID REFERENCES users(uid) ON DELETE SET NULL,
     title VARCHAR(200) NOT NULL,
     body TEXT NOT NULL,
+    media_url VARCHAR(255),
+    media_type VARCHAR(50),
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );

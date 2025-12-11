@@ -65,7 +65,17 @@ func main() {
 		log.Println("No .env file found")
 	}
 
+	if _, err := os.Stat("./uploads"); os.IsNotExist(err) {
+		if err := os.MkdirAll("./uploads", 0755); err != nil {
+			log.Fatal("Failed to create uploads directory:", err)
+		}
+	}
+
 	router := gin.Default()
+
+	router.MaxMultipartMemory = 8 << 20
+
+	router.Static("/uploads", "./uploads")
 
 	db := pg.Connect(&pg.Options{
 		Addr:     os.Getenv("DB_ADDR"),
@@ -100,13 +110,10 @@ func main() {
 		MaxAge:           12 * 60 * 60,
 	}))
 
-	// Public routes
-	// GET
 	router.GET("/universities", func(c *gin.Context) {
 		Handlers.GetUniversities(c, cacheData)
 	})
 
-	// POST
 	router.POST("/signup", func(c *gin.Context) {
 		Handlers.SignUp(c, db)
 	})
@@ -136,14 +143,11 @@ func main() {
 		})
 	})
 
-	// Protected routes
 	protected := router.Group("/", AuthMiddleware(db))
 	{
 		protected.GET("/profile", func(c *gin.Context) { Handlers.GetProfile(c, db) })
 		protected.GET("/categories", func(c *gin.Context) { Handlers.GetCategories(c, db, cacheData) })
 
-		// GROUP: FORUMS
-		// Prefix URL: /forums
 		forums := protected.Group("/forums")
 		{
 			forums.GET("/", func(c *gin.Context) { Handlers.GetForums(c, db, cacheData) })
@@ -157,8 +161,6 @@ func main() {
 			forums.GET("/:forum_id/members", func(c *gin.Context) { Handlers.GetForumMembersByID(c, db, cacheData) })
 		}
 
-		// GROUP: POSTS
-		// Prefix URL: /posts
 		posts := protected.Group("/posts")
 		{
 			posts.POST("/", func(c *gin.Context) { Handlers.CreatePost(c, db, cacheData) })
@@ -173,8 +175,6 @@ func main() {
 			posts.GET("/:post_id/vote", func(c *gin.Context) { Handlers.GetPostVotes(c, db) })
 		}
 
-		// GROUP: COMMENTS
-		// Prefix URL: /comments
 		comments := protected.Group("/comments")
 		{
 			comments.POST("/", func(c *gin.Context) { Handlers.CreateComment(c, db, cacheData) })

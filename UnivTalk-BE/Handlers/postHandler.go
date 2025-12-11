@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/Ariffansyah/UnivTalk/Models"
@@ -91,12 +93,13 @@ func GetForumPostsByID(c *gin.Context, db *pg.DB, ch *cache.Cache) {
 
 func CreatePost(c *gin.Context, db *pg.DB, ch *cache.Cache) {
 	var post Models.Posts
-	if err := c.ShouldBindJSON(&post); err != nil {
+
+	if err := c.ShouldBind(&post); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error":  "Invalid request",
 			"detail": err.Error(),
 		})
-		log.Printf("Create Post Failed, Error: %v", err.Error())
+		log.Printf("Create Post Failed, Bind Error: %v", err.Error())
 		return
 	}
 
@@ -120,9 +123,36 @@ func CreatePost(c *gin.Context, db *pg.DB, ch *cache.Cache) {
 
 	post.UserID = userID
 
+	file, err := c.FormFile("media")
+	if err == nil {
+		ext := strings.ToLower(filepath.Ext(file.Filename))
+		allowedImages := map[string]bool{".jpg": true, ".jpeg": true, ".png": true, ".gif": true, ".webp": true}
+		allowedVideos := map[string]bool{".mp4": true, ".mov": true, ".avi": true, ".mkv": true}
+
+		if allowedImages[ext] {
+			post.MediaType = "image"
+		} else if allowedVideos[ext] {
+			post.MediaType = "video"
+		} else {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Unsupported file type. Allowed: jpg, png, gif, mp4, mov"})
+			return
+		}
+
+		newFileName := uuid.New().String() + ext
+		uploadPath := "./uploads/" + newFileName
+
+		if err := c.SaveUploadedFile(file, uploadPath); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save file"})
+			log.Printf("File Save Error: %v", err)
+			return
+		}
+
+		post.MediaURL = "/uploads/" + newFileName
+	}
+
 	if post.ForumID == uuid.Nil || post.Title == "" || post.Body == "" {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error":  "All fields are required",
+			"error":  "All fields are required (ForumID, Title, Body)",
 			"detail": "One or more fields are empty",
 		})
 		log.Printf("Create Post Failed: One or more fields are empty")
