@@ -5,6 +5,7 @@ export async function signIn(
   const res = await fetch("https://api.arpthef.my.id/signin", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
+<<<<<<< HEAD
     body: JSON.stringify({ email, password }),
   });
 
@@ -20,12 +21,29 @@ export async function signIn(
       message: "Server returned non-JSON response.",
       details: text.slice(0, 400),
     };
+=======
+    body: JSON.stringify({
+      email,
+      password,
+    }),
+  });
+
+  let data;
+  try {
+    data = await res.json();
+  } catch {
+    data = {};
+>>>>>>> 1ad313555744c197f19b7a04134339de4f496da0
   }
 
   if (!res.ok) {
     return {
       success: false,
+<<<<<<< HEAD
       message: data.message || "Network response was not ok.",
+=======
+      message: "Login failed.",
+>>>>>>> 1ad313555744c197f19b7a04134339de4f496da0
       details: data.detail,
     };
   }
@@ -35,4 +53,8 @@ export async function signIn(
     message: data.message || "Login successful.",
     details: data,
   };
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> 1ad313555744c197f19b7a04134339de4f496da0

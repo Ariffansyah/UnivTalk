@@ -1,5 +1,4 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import LandingPage from "./pages/LandingPage";
 import SignUpPage from "./pages/SignUpPage";
 import SignInPage from "./pages/SignInPage";
 import NotFound from "./pages/NotFound";
@@ -12,10 +11,15 @@ function App() {
       <Router>
         <Routes>
           <Route path="*" element={<NotFound />} />
+<<<<<<< HEAD
           <Route path="/" element={<LandingPage />} />
           <Route path="/home" element={<HomePage />} />
+=======
+          <Route path="/" element={<SignInPage />} />
+>>>>>>> 1ad313555744c197f19b7a04134339de4f496da0
           <Route path="/signup" element={<SignUpPage />} />
           <Route path="/signin" element={<SignInPage />} />
+          <Route path="/home" element={<HomePage />} />
         </Routes>
       </Router>
     </ErrorBoundary>

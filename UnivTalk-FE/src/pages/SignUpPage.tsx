@@ -96,6 +96,10 @@ const SignUpPage: React.FC = () => {
 
   const navigate = useNavigate();
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> 1ad313555744c197f19b7a04134339de4f496da0
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setErrorMsg("");
@@ -152,17 +156,8 @@ const SignUpPage: React.FC = () => {
     )
       .then((response) => {
         if (response.success) {
-          alert("Registration successful! Please sign in.");
-          setForm({
-            username: "",
-            firstName: "",
-            lastName: "",
-            email: "",
-            password: "",
-            confirmPassword: "",
-            university: "",
-            status: "active",
-          });
+          alert("Registration successful!");
+          navigate("/signin");
         } else {
           if (response.details && response.details.code === "23505") {
             setErrorMsg("Username or email already exists.");
