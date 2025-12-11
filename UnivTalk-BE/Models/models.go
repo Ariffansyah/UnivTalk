@@ -41,10 +41,10 @@ type ForumMembers struct {
 
 type Posts struct {
 	ID        int       `json:"id"`
-	ForumID   uuid.UUID `json:"forum_id"`
+	ForumID   uuid.UUID `json:"forum_id" form:"forum_id"`
 	UserID    uuid.UUID `json:"user_id"`
-	Title     string    `json:"title"`
-	Body      string    `json:"body"`
+	Title     string    `json:"title" form:"title"`
+	Body      string    `json:"body" form:"body"`
 	MediaURL  string    `json:"media_url"`
 	MediaType string    `json:"media_type"`
 	CreatedAt time.Time `json:"created_at"`
