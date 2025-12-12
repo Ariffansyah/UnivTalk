@@ -280,7 +280,7 @@ const SignUpPage: React.FC = () => {
               autoComplete="off"
               value={form.university}
               onChange={handleUniversityInput}
-              onBlur={() => setTimeout(() => setShowSuggestions(true), 200)}
+              onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
               required
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
               placeholder="Search your university..."
