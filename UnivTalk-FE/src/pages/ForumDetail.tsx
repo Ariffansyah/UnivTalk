@@ -1,322 +1,520 @@
 import React, { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
-import { Link } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
+import {
+  getForumById,
+  joinForum,
+  leaveForum,
+  getForumMembers,
+  deleteForum,
+  type Forum,
+} from "../services/api/forums";
+import { getPostsByForum, votePost, type Post } from "../services/api/posts";
+import { useAuth } from "../context/AuthContext";
+import CreatePostModal from "../components/CreatePostModal";
 
-type Forum = {
-  id: string;
-  name: string;
-  description?: string;
-  members_count?: number;
-  is_member?: boolean;
+const getValidDate = (dateString?: string) => {
+  if (!dateString) return new Date();
+  const date = new Date(dateString);
+  return isNaN(date.getTime()) ? new Date() : date;
 };
 
-type Post = {
-  id: number;
-  title: string;
-  body?: string;
-  author_id?: string;
-  author_name?: string;
-  created_at?: string;
-  votes_count?: number;
-  comments_count?: number;
-  user_vote?: "upvote" | "downvote" | null;
+const formatDate = (dateString?: string) => {
+  return getValidDate(dateString).toLocaleDateString();
 };
+
+const getYear = (dateString?: string) => {
+  return getValidDate(dateString).getFullYear();
+};
+
+type PostWithVote = Post & { my_vote?: number | null };
 
 const ForumDetail: React.FC = () => {
   const { forumId } = useParams<{ forumId: string }>();
-  const token = localStorage.getItem("token") || "";
+  const navigate = useNavigate();
+  const { user } = useAuth();
 
   const [forum, setForum] = useState<Forum | null>(null);
-  const [posts, setPosts] = useState<Post[]>([]);
+  const [posts, setPosts] = useState<PostWithVote[]>([]);
+  const [realMemberCount, setRealMemberCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isMember, setIsMember] = useState(false);
-  const [newPostTitle, setNewPostTitle] = useState("");
-  const [newPostBody, setNewPostBody] = useState("");
+  const [myRole, setMyRole] = useState<string | null>(null);
+  const [joinLoading, setJoinLoading] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [editTitle, setEditTitle] = useState("");
+  const [editDescription, setEditDescription] = useState("");
+
+  const fetchPosts = async () => {
+    if (!forumId) return;
+    try {
+      const postsRes = await getPostsByForum(forumId);
+      const incoming = (postsRes as any).posts ?? postsRes;
+      const mapped: PostWithVote[] = (incoming as Post[]).map((p: any) => ({
+        ...p,
+        upvotes: p.upvotes ?? 0,
+        downvotes: p.downvotes ?? 0,
+        my_vote: p.my_vote ?? null,
+        created_at: p.created_at ?? p.CreatedAt,
+      }));
+      setPosts(mapped);
+    } catch {}
+  };
 
   useEffect(() => {
+    if (!forumId) return;
     const fetchData = async () => {
       setLoading(true);
-      setError(null);
       try {
-        // Fetch forum detail
-        const forumRes = await fetch(
-          `${import.meta.env.VITE_API_URL}/forums/${forumId}`,
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          },
-        );
-        if (!forumRes.ok) throw new Error("Failed to fetch forum");
-        const forumData = await forumRes.json();
-        const forumInfo: Forum = {
-          id: forumData.id || forumData.fid || forumId || "",
-          name: forumData.name || forumData.title || "Untitled",
-          description: forumData.description || "",
-          members_count: forumData.members_count || 0,
-          is_member: forumData.is_member || false,
-        };
-        setForum(forumInfo);
-        setIsMember(forumInfo.is_member || false);
-
-        // Fetch posts
-        const postsRes = await fetch(
-          `${import.meta.env.VITE_API_URL}/forums/${forumId}/posts`,
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          },
-        );
-        if (!postsRes.ok) throw new Error("Failed to fetch posts");
-        const postsData = await postsRes.json();
-        const postsList = Array.isArray(postsData)
-          ? postsData
-          : postsData.posts || postsData.data || [];
-        setPosts(
-          postsList.map((p: any) => ({
-            id: p.id,
-            title: p.title || "Untitled",
-            body: p.body || p.content || "",
-            author_name: p.author_name || p.username || "Anonymous",
-            created_at: p.created_at || "",
-            votes_count: p.votes_count || p.vote_count || 0,
-            comments_count: p.comments_count || p.comment_count || 0,
-            user_vote: p.user_vote || null,
-          })),
-        );
-      } catch (err: any) {
-        setError(err.message || "Error loading forum");
+        const forumRes = await getForumById(forumId);
+        if (forumRes && forumRes.forum) {
+          setForum(forumRes.forum);
+          setEditTitle(forumRes.forum.title || "");
+          setEditDescription(forumRes.forum.description || "");
+        } else {
+          setError("Forum not found");
+          setLoading(false);
+          return;
+        }
+        await fetchPosts();
+        try {
+          const membersRes = await getForumMembers(forumId);
+          if (membersRes && membersRes.forum_members) {
+            setRealMemberCount(membersRes.forum_members.length);
+            if (user) {
+              const myRecord = membersRes.forum_members.find(
+                (member: any) => member.user_id === user.user_id,
+              );
+              if (myRecord) {
+                setIsMember(true);
+                setMyRole(myRecord.role);
+              } else {
+                setIsMember(false);
+                setMyRole(null);
+              }
+            }
+          }
+        } catch {}
+      } catch {
+        setError("Failed to load data");
       } finally {
         setLoading(false);
       }
     };
+    fetchData();
+  }, [forumId, user]);
 
-    if (forumId && token) {
-      fetchData();
-    }
-  }, [forumId, token]);
+  const hasAdminPower = user?.is_admin || myRole === "admin";
 
   const handleJoinLeave = async () => {
-    try {
-      const endpoint = isMember ? "leave" : "join";
-      const res = await fetch(
-        `${import.meta.env.VITE_API_URL}/forums/${forumId}/${endpoint}`,
-        {
-          method: "POST",
-          headers: { Authorization: `Bearer ${token}` },
-        },
-      );
-      if (!res.ok) throw new Error(`Failed to ${endpoint} forum`);
-      setIsMember(!isMember);
-    } catch (err: any) {
-      alert(err.message);
-    }
-  };
-
-  const handleCreatePost = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newPostTitle.trim()) {
-      alert("Post title required");
+    if (!forumId || !user || joinLoading) return;
+    if (hasAdminPower) {
+      alert("Admins cannot leave.");
       return;
     }
+    setJoinLoading(true);
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/posts/`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          forum_id: forumId,
-          title: newPostTitle,
-          body: newPostBody,
-        }),
-      });
-      if (!res.ok) throw new Error("Failed to create post");
-      setNewPostTitle("");
-      setNewPostBody("");
-      // Refresh posts
-      const postsRes = await fetch(
-        `${import.meta.env.VITE_API_URL}/forums/${forumId}/posts`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        },
-      );
-      const postsData = await postsRes.json();
-      const postsList = Array.isArray(postsData)
-        ? postsData
-        : postsData.posts || [];
-      setPosts(
-        postsList.map((p: any) => ({
-          id: p.id,
-          title: p.title || "Untitled",
-          body: p.body || "",
-          author_name: p.author_name || p.username || "Anonymous",
-          votes_count: p.votes_count || 0,
-          comments_count: p.comments_count || 0,
-        })),
-      );
-    } catch (err: any) {
-      alert(err.message || "Error creating post");
+      if (isMember) {
+        await leaveForum(forumId);
+        setIsMember(false);
+        setMyRole(null);
+        setRealMemberCount((prev) => Math.max(0, prev - 1));
+      } else {
+        await joinForum(forumId);
+        setIsMember(true);
+        setMyRole("member");
+        setRealMemberCount((prev) => prev + 1);
+      }
+    } catch {
+    } finally {
+      setJoinLoading(false);
     }
   };
 
-  const handleVote = async (postId: number, voteType: "upvote" | "downvote") => {
+  const handleVote = async (postId: number, type: "upvote" | "downvote") => {
+    if (!user) {
+      alert("Please sign in to vote.");
+      return;
+    }
+    const targetPost = posts.find((p) => p.id === postId);
+    const currentVote = targetPost?.my_vote ?? null;
+    let action: "upvote" | "downvote" | "remove" = type;
+    if (type === "upvote" && currentVote === 1) action = "remove";
+    else if (type === "downvote" && currentVote === -1) action = "remove";
+
+    setPosts((prevPosts) =>
+      prevPosts.map((p) => {
+        if (p.id !== postId) return p;
+        if (action === "remove") {
+          if (currentVote === 1) {
+            return {
+              ...p,
+              upvotes: Math.max(0, (p.upvotes || 0) - 1),
+              my_vote: null,
+            };
+          }
+          if (currentVote === -1) {
+            return {
+              ...p,
+              downvotes: Math.max(0, (p.downvotes || 0) - 1),
+              my_vote: null,
+            };
+          }
+          return p;
+        }
+        if (action === "upvote") {
+          if (currentVote === -1) {
+            return {
+              ...p,
+              upvotes: (p.upvotes || 0) + 1,
+              downvotes: Math.max(0, (p.downvotes || 0) - 1),
+              my_vote: 1,
+            };
+          }
+          return { ...p, upvotes: (p.upvotes || 0) + 1, my_vote: 1 };
+        }
+        if (action === "downvote") {
+          if (currentVote === 1) {
+            return {
+              ...p,
+              downvotes: (p.downvotes || 0) + 1,
+              upvotes: Math.max(0, (p.upvotes || 0) - 1),
+              my_vote: -1,
+            };
+          }
+          return { ...p, downvotes: (p.downvotes || 0) + 1, my_vote: -1 };
+        }
+        return p;
+      }),
+    );
+
+    try {
+      await votePost(postId, action);
+      await fetchPosts();
+    } catch {
+      await fetchPosts();
+    }
+  };
+
+  const handleDeleteForum = async () => {
+    if (!forumId || !window.confirm("DANGER: Delete this forum?")) return;
+    try {
+      await deleteForum(forumId);
+      navigate("/forums");
+    } catch {
+      alert("Failed to delete forum");
+    }
+  };
+
+  const handleOpenEditForum = () => {
+    if (!forum) return;
+    setEditTitle(forum.title || "");
+    setEditDescription(forum.description || "");
+    setIsEditOpen(true);
+  };
+
+  const handleSubmitEditForum = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!forumId) return;
     try {
       const res = await fetch(
-        `${import.meta.env.VITE_API_URL}/posts/${postId}/${voteType}`,
+        `${import.meta.env.VITE_API_URL}/forums/${forumId}`,
         {
-          method: "POST",
-          headers: { Authorization: `Bearer ${token}` },
+          method: "PUT",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: editTitle,
+            description: editDescription,
+          }),
         },
       );
-      if (!res.ok) throw new Error(`Failed to ${voteType}`);
-      // Update UI
-      setPosts(
-        posts.map((p) =>
-          p.id === postId
-            ? {
-                ...p,
-                votes_count:
-                  p.user_vote === voteType
-                    ? (p.votes_count ?? 0) - 1
-                    : p.user_vote === (voteType === "upvote" ? "downvote" : "upvote")
-                      ? (p.votes_count ?? 0) + 2
-                      : (p.votes_count ?? 0) + 1,
-                user_vote: p.user_vote === voteType ? null : voteType,
-              }
-            : p,
-        ),
-      );
-    } catch (err: any) {
-      alert(err.message);
+      if (!res.ok) throw new Error("Failed to update forum");
+      setIsEditOpen(false);
+      const forumRes = await getForumById(forumId);
+      if (forumRes && forumRes.forum) setForum(forumRes.forum);
+    } catch {
+      alert("Failed to update forum");
     }
+  };
+
+  const getMediaUrl = (path?: string) => {
+    if (!path) return "";
+    if (path.startsWith("http")) return path;
+    return `${import.meta.env.VITE_API_URL}${path}`;
+  };
+
+  const isVideo = (type?: string) => {
+    if (!type) return false;
+    return type.toLowerCase().includes("video");
   };
 
   if (loading)
+    return <div className="p-10 text-center text-gray-600">Loading...</div>;
+  if (error || !forum)
     return (
-      <div className="max-w-3xl mx-auto p-4 mt-8 text-gray-600">
-        Loading...
-      </div>
+      <div className="p-10 text-center text-red-500 font-medium">{error}</div>
     );
 
-  if (!forum)
-    return (
-      <div className="max-w-3xl mx-auto p-4 mt-8 text-red-600">
-        Forum not found
-      </div>
-    );
+  const forumCreatedAt = forum.created_at || (forum as any).CreatedAt;
+  const sortedPosts = [...posts].sort((a, b) => {
+    const sa = (a.upvotes || 0) - (a.downvotes || 0);
+    const sb = (b.upvotes || 0) - (b.downvotes || 0);
+    if (sb !== sa) return sb - sa;
+    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+  });
 
   return (
-    <div className="max-w-3xl mx-auto p-4 mt-8">
-      <div className="mb-6 border p-4 rounded">
-        <h1 className="text-3xl font-bold mb-2">{forum.name}</h1>
-        {forum.description && (
-          <p className="text-gray-700 mb-2">{forum.description}</p>
-        )}
-        <div className="flex justify-between items-center">
-          <span className="text-sm text-gray-600">
-            Members: {forum.members_count}
-          </span>
-          <button
-            onClick={handleJoinLeave}
-            className={`px-4 py-2 rounded font-semibold ${
-              isMember
-                ? "bg-red-600 text-white hover:bg-red-700"
-                : "bg-blue-600 text-white hover:bg-blue-700"
-            }`}
-          >
-            {isMember ? "Leave" : "Join"}
-          </button>
-        </div>
-      </div>
-
-      {error && (
-        <div className="text-red-600 mb-4 bg-red-50 p-3 rounded">{error}</div>
-      )}
-
-      {isMember && (
-        <form
-          onSubmit={handleCreatePost}
-          className="bg-white border p-4 rounded mb-6"
-        >
-          <h3 className="text-lg font-semibold mb-3">Create Post</h3>
-          <input
-            type="text"
-            placeholder="Post title"
-            value={newPostTitle}
-            onChange={(e) => setNewPostTitle(e.target.value)}
-            required
-            className="w-full p-2 border rounded mb-3 focus:outline-none focus:ring-2 focus:ring-blue-400"
-          />
-          <textarea
-            placeholder="Post body (optional)"
-            value={newPostBody}
-            onChange={(e) => setNewPostBody(e.target.value)}
-            className="w-full p-2 border rounded mb-3 h-20 focus:outline-none focus:ring-2 focus:ring-blue-400"
-          />
-          <button
-            type="submit"
-            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-          >
-            Post
-          </button>
-        </form>
-      )}
-
-      <div className="space-y-4">
-        <h2 className="text-xl font-bold">Posts</h2>
-        {posts.length === 0 ? (
-          <p className="text-gray-600">No posts yet.</p>
-        ) : (
-          posts.map((post) => (
-            <Link
-              key={post.id}
-              to={`/posts/${post.id}`}
-              className="border p-4 rounded hover:shadow transition block"
-            >
-              <h3 className="font-semibold text-lg text-blue-600 hover:underline">
-                {post.title}
-              </h3>
-              {post.body && (
-                <p className="text-gray-700 my-2 line-clamp-2">{post.body}</p>
-              )}
-              <div className="text-sm text-gray-600 mb-2">
-                By {post.author_name} • {post.created_at}
+    <div className="min-h-screen bg-gray-50">
+      <div className="bg-linear-to-r from-blue-600 to-indigo-700 h-40 w-full shadow-inner"></div>
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 -mt-16">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-8 relative">
+          <div className="flex flex-col sm:flex-row items-start sm:items-end justify-between gap-4">
+            <div className="flex items-end gap-5">
+              <div className="w-28 h-28 bg-white rounded-xl p-1 shadow-md">
+                <div className="w-full h-full bg-blue-50 rounded-lg flex items-center justify-center text-5xl font-bold text-blue-600">
+                  {forum.title.charAt(0).toUpperCase()}
+                </div>
               </div>
-              <div className="flex gap-3 items-center">
-                <button
-                  onClick={(e) => {
-                    e.preventDefault();
-                    handleVote(post.id, "upvote");
-                  }}
-                  className={`px-3 py-1 rounded text-sm ${
-                    post.user_vote === "upvote"
-                      ? "bg-green-200 text-green-700"
-                      : "bg-gray-200 hover:bg-gray-300"
-                  }`}
-                >
-                  👍 {post.votes_count}
-                </button>
-                <button
-                  onClick={(e) => {
-                    e.preventDefault();
-                    handleVote(post.id, "downvote");
-                  }}
-                  className={`px-3 py-1 rounded text-sm ${
-                    post.user_vote === "downvote"
-                      ? "bg-red-200 text-red-700"
-                      : "bg-gray-200 hover:bg-gray-300"
-                  }`}
-                >
-                  👎
-                </button>
-                <span className="text-xs text-gray-600 ml-2">
-                  💬 {post.comments_count} comments
+              <div className="mb-1">
+                <h1 className="text-3xl font-bold text-gray-900">
+                  {forum.title}
+                </h1>
+                <p className="text-gray-500 font-medium">Community Forum</p>
+              </div>
+            </div>
+            {user && (
+              <div className="flex items-center gap-3">
+                {hasAdminPower ? (
+                  <>
+                    <div className="px-4 py-2 bg-yellow-50 text-yellow-700 font-bold rounded-lg border border-yellow-200 flex items-center gap-2 cursor-default">
+                      <span>👑</span>{" "}
+                      {user.is_admin ? "System Admin" : "Forum Admin"}
+                    </div>
+                    <button
+                      onClick={handleOpenEditForum}
+                      className="px-6 py-2 bg-gray-900 text-white font-semibold rounded-lg hover:bg-gray-800 transition shadow-sm"
+                    >
+                      Edit Forum
+                    </button>
+                    <button
+                      onClick={handleDeleteForum}
+                      className="px-6 py-2 bg-red-600 text-white font-semibold rounded-lg hover:bg-red-700 transition shadow-sm"
+                    >
+                      Delete Forum
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    onClick={handleJoinLeave}
+                    disabled={joinLoading}
+                    className={`px-8 py-2.5 rounded-lg font-semibold transition shadow-sm ${
+                      isMember
+                        ? "bg-white border-2 border-red-500 text-red-500 hover:bg-red-50"
+                        : "bg-blue-600 text-white hover:bg-blue-700 hover:shadow-md"
+                    } ${joinLoading ? "opacity-70 cursor-wait" : ""}`}
+                  >
+                    {joinLoading
+                      ? "Processing..."
+                      : isMember
+                        ? "Leave Community"
+                        : "Join Community"}
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+          <div className="mt-6 pt-6 border-t border-gray-100 flex flex-col md:flex-row md:items-center gap-6">
+            <div className="flex items-center gap-6 text-sm text-gray-600">
+              <div className="flex flex-col">
+                <span className="font-bold text-gray-900 text-lg">
+                  {realMemberCount}
+                </span>
+                <span className="text-xs uppercase tracking-wide text-gray-400">
+                  Members
                 </span>
               </div>
-            </Link>
-          ))
+              <div className="flex flex-col">
+                <span className="font-bold text-gray-900 text-lg">
+                  {posts.length}
+                </span>
+                <span className="text-xs uppercase tracking-wide text-gray-400">
+                  Posts
+                </span>
+              </div>
+              <div className="flex flex-col">
+                <span className="font-bold text-gray-900 text-lg">
+                  {getYear(forumCreatedAt)}
+                </span>
+                <span className="text-xs uppercase tracking-wide text-gray-400">
+                  Established
+                </span>
+              </div>
+            </div>
+            <p className="text-gray-600 flex-1 md:text-right italic">
+              "{forum.description}"
+            </p>
+          </div>
+        </div>
+
+        {isEditOpen && (
+          <form
+            onSubmit={handleSubmitEditForum}
+            className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm mb-8"
+          >
+            <h3 className="text-sm font-bold text-gray-800 mb-3">Edit Forum</h3>
+            <input
+              className="w-full p-2 mb-2 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-400"
+              value={editTitle}
+              onChange={(e) => setEditTitle(e.target.value)}
+              placeholder="Title"
+            />
+            <textarea
+              className="w-full p-2 mb-2 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-400"
+              rows={4}
+              value={editDescription}
+              onChange={(e) => setEditDescription(e.target.value)}
+              placeholder="Description"
+            />
+            <div className="flex gap-2 justify-end">
+              <button
+                type="button"
+                onClick={() => setIsEditOpen(false)}
+                className="text-xs font-bold text-gray-500"
+              >
+                Cancel
+              </button>
+              <button className="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-bold hover:bg-blue-700">
+                Save
+              </button>
+            </div>
+          </form>
         )}
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 pb-10">
+          <div className="md:col-span-2 space-y-6">
+            {sortedPosts.length === 0 ? (
+              <div className="bg-white p-12 rounded-xl border border-gray-100 shadow-sm text-center">
+                <div className="text-6xl mb-4">📝</div>
+                <h3 className="text-xl font-bold text-gray-800 mb-2">
+                  No posts yet
+                </h3>
+                <p className="text-gray-500">
+                  Be the first to start a conversation.
+                </p>
+              </div>
+            ) : (
+              sortedPosts.map((post) => {
+                const postDate = post.created_at || (post as any).CreatedAt;
+                const authorUsername =
+                  (post as any).user?.username || "Anonymous User";
+                const voteCount = (post.upvotes || 0) - (post.downvotes || 0);
+                const upActive = post.my_vote === 1;
+                const downActive = post.my_vote === -1;
+
+                return (
+                  <div
+                    key={post.id}
+                    className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition"
+                  >
+                    <div className="flex items-center gap-2 mb-3">
+                      <div className="w-6 h-6 rounded-full bg-linear-to-r from-purple-400 to-pink-400 flex items-center justify-center text-[10px] text-white font-bold uppercase">
+                        {authorUsername.charAt(0)}
+                      </div>
+                      <span
+                        className="text-sm font-semibold text-gray-700 hover:text-blue-600 hover:underline cursor-pointer transition"
+                        onClick={() => navigate(`/profile/${post.user_id}`)}
+                      >
+                        {authorUsername}
+                      </span>
+                      <span className="text-gray-300 text-xs">•</span>
+                      <span className="text-xs text-gray-400">
+                        {formatDate(postDate)}
+                      </span>
+                    </div>
+                    <h3 className="text-xl font-bold text-gray-900 mb-2 leading-tight">
+                      {post.title}
+                    </h3>
+                    <p className="text-gray-600 mb-4 line-clamp-3 leading-relaxed whitespace-pre-wrap">
+                      {post.body}
+                    </p>
+                    {post.media_url && (
+                      <div className="mb-4 rounded-lg overflow-hidden border border-gray-100 bg-black">
+                        {isVideo(post.media_type) ? (
+                          <video
+                            src={getMediaUrl(post.media_url)}
+                            controls
+                            className="w-full max-h-96 object-contain mx-auto"
+                          />
+                        ) : (
+                          <img
+                            src={getMediaUrl(post.media_url)}
+                            alt="Post"
+                            className="w-full max-h-96 object-contain mx-auto"
+                          />
+                        )}
+                      </div>
+                    )}
+                    <div className="flex items-center gap-4">
+                      <div className="flex items-center bg-gray-50 rounded-lg border border-gray-100 overflow-hidden">
+                        <button
+                          onClick={() =>
+                            handleVote(post.id as number, "upvote")
+                          }
+                          className={`px-3 py-1.5 hover:bg-gray-200 transition font-bold ${upActive ? "text-blue-600" : "text-gray-500 hover:text-blue-600"}`}
+                          title={upActive ? "Remove upvote" : "Upvote"}
+                        >
+                          ▲
+                        </button>
+                        <span className="text-sm font-bold text-gray-700 px-1">
+                          {voteCount}
+                        </span>
+                        <button
+                          onClick={() =>
+                            handleVote(post.id as number, "downvote")
+                          }
+                          className={`px-3 py-1.5 hover:bg-gray-200 transition font-bold ${downActive ? "text-red-500" : "text-gray-500 hover:text-red-500"}`}
+                          title={downActive ? "Remove downvote" : "Downvote"}
+                        >
+                          ▼
+                        </button>
+                      </div>
+                      <button
+                        className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-500 hover:bg-gray-50 rounded-lg transition"
+                        onClick={() => navigate(`/posts/${post.id}`)}
+                      >
+                        <span>💬</span> <span>Comment</span>
+                      </button>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+          <div className="hidden md:block">
+            <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm sticky top-6">
+              {user && (
+                <button
+                  onClick={() => setIsModalOpen(true)}
+                  className="block w-full text-center bg-gray-900 text-white font-bold py-3 rounded-xl hover:bg-gray-800 transition shadow-lg shadow-gray-200"
+                >
+                  + New Post
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
+      {forumId && (
+        <CreatePostModal
+          forumId={forumId}
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          onPostCreated={fetchPosts}
+        />
+      )}
     </div>
   );
 };

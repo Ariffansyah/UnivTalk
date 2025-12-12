@@ -1,97 +1,170 @@
 import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { signIn } from "../services/api/authHandler.ts";
+import { signIn } from "../services/api/auth.ts";
 
 const SignInPage: React.FC = () => {
-  const [form, setForm] = useState({ username: "", password: "" });
-  const [errorMsg, setErrorMsg] = useState<string>("");
-  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+
+  const [formData, setFormData] = useState({
+    username: "",
+    password: "",
+  });
+
+  const [errorMsg, setErrorMsg] = useState<string>("");
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
+    if (errorMsg) setErrorMsg("");
   };
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setErrorMsg("");
-    if (!form.username.trim() || !form.password) {
-      setErrorMsg("Please enter username and password.");
+
+    if (!formData.username.trim() || !formData.password) {
+      setErrorMsg("Username and password are required.");
       return;
     }
 
-    setLoading(true);
+    setIsLoading(true);
+    setErrorMsg("");
+
     try {
-      const res = await signIn(form.username.trim(), form.password);
-      if (res.success && res.token) {
-        localStorage.setItem("token", res.token);
-        navigate("/");
+      const res = await signIn(formData.username.trim(), formData.password);
+
+      if (res.success) {
+        navigate("/", { replace: true });
       } else {
-        setErrorMsg(res.message || "Sign in failed. Check credentials.");
+        setErrorMsg(res.message);
       }
-    } catch (err) {
-      setErrorMsg("An unexpected error occurred. Please try again.");
+    } catch (error: any) {
+      setErrorMsg(error.message || "Invalid username or password.");
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="max-w-md mx-auto bg-white p-6 rounded-lg shadow-md mt-10"
-    >
-      <h2 className="text-2xl font-bold mb-6 text-center">Sign In</h2>
-
-      <div className="mb-4">
-        <label className="block mb-1 font-medium">
-          Username:
-          <input
-            type="text"
-            name="username"
-            value={form.username}
-            onChange={handleChange}
-            required
-            className="w-full mt-1 p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
-            placeholder="Your username"
-          />
-        </label>
-      </div>
-
-      <div className="mb-6">
-        <label className="block mb-1 font-medium">
-          Password:
-          <input
-            type="password"
-            name="password"
-            value={form.password}
-            onChange={handleChange}
-            required
-            className="w-full mt-1 p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
-            placeholder="Your password"
-          />
-        </label>
-      </div>
-
-      {errorMsg && (
-        <div className="mb-4 text-red-600 rounded px-4 py-2 bg-red-50 border border-red-200">
-          {errorMsg}
+    <div className="min-h-screen flex items-center justify-center bg-gray-100 px-4">
+      <div className="max-w-md w-full bg-white p-8 rounded-xl shadow-lg border border-gray-200">
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-bold text-gray-900">Welcome Back</h1>
+          <p className="text-gray-500 mt-2">Sign in to access your account</p>
         </div>
-      )}
 
-      <button
-        type="submit"
-        disabled={loading}
-        className="w-full bg-blue-600 text-white font-semibold py-2 rounded hover:bg-blue-700 transition disabled:opacity-60"
-      >
-        {loading ? "Signing in..." : "Sign In"}
-      </button>
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {errorMsg && (
+            <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded animate-in fade-in slide-in-from-top-1">
+              <div className="flex">
+                <div className="shrink-0">
+                  <svg
+                    className="h-5 w-5 text-red-500"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                </div>
+                <div className="ml-3">
+                  <p className="text-sm text-red-700 font-medium">{errorMsg}</p>
+                </div>
+              </div>
+            </div>
+          )}
 
-      <div className="mt-4 text-center text-sm text-gray-600">
-        Don't have an account? <Link to="/signup" className="text-blue-600">Sign up</Link>
+          <div>
+            <label
+              htmlFor="username"
+              className="block text-sm font-medium text-gray-700 mb-1"
+            >
+              Username or Email
+            </label>
+            <input
+              id="username"
+              name="username"
+              type="text"
+              required
+              value={formData.username}
+              onChange={handleChange}
+              placeholder="Enter your username"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors"
+            />
+          </div>
+
+          <div>
+            <label
+              htmlFor="password"
+              className="block text-sm font-medium text-gray-700 mb-1"
+            >
+              Password
+            </label>
+            <input
+              id="password"
+              name="password"
+              type="password"
+              required
+              value={formData.password}
+              onChange={handleChange}
+              placeholder="••••••••"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors"
+            />
+          </div>
+
+          <button
+            type="submit"
+            disabled={isLoading}
+            className={`w-full flex justify-center py-2.5 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all ${
+              isLoading ? "opacity-75 cursor-not-allowed" : ""
+            }`}
+          >
+            {isLoading ? (
+              <span className="flex items-center">
+                <svg
+                  className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  ></circle>
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  ></path>
+                </svg>
+                Signing in...
+              </span>
+            ) : (
+              "Sign In"
+            )}
+          </button>
+        </form>
+
+        <div className="mt-6 text-center text-sm">
+          <p className="text-gray-600">
+            Don't have an account?{" "}
+            <Link
+              to="/signup"
+              className="font-medium text-blue-600 hover:text-blue-500 hover:underline transition"
+            >
+              Sign up here
+            </Link>
+          </p>
+        </div>
       </div>
-    </form>
+    </div>
   );
 };
 

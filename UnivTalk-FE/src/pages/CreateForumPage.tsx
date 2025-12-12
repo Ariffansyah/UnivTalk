@@ -1,139 +1,173 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import {
+  createForum,
+  getCategories,
+  type Category,
+} from "../services/api/forums";
 
 const CreateForumPage: React.FC = () => {
-  const token = localStorage.getItem("token") || "";
   const navigate = useNavigate();
 
-  const [form, setForm] = useState({
-    name: "",
-    description: "",
-    category_id: "",
-  });
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [categoryId, setCategoryId] = useState<number | null>(null);
 
-  const [error, setError] = useState<string | null>(null);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>,
-  ) => {
-    const { name, value } = e.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
-  };
+  useEffect(() => {
+    const fetchCats = async () => {
+      try {
+        const res = await getCategories();
+        if (res && res.data) {
+          setCategories(res.data);
+        }
+      } catch (err) {
+        console.error("Failed to fetch categories", err);
+      }
+    };
+    fetchCats();
+  }, []);
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
-
-    if (!form.name.trim()) {
-      setError("Forum name is required");
-      return;
-    }
-
-    if (form.name.length < 3) {
-      setError("Forum name must be at least 3 characters");
-      return;
-    }
-
     setLoading(true);
+    setError("");
+
+    if (!name.trim()) {
+      setError("Community name is required");
+      setLoading(false);
+      return;
+    }
+
+    if (!categoryId) {
+      setError("Please select a category");
+      setLoading(false);
+      return;
+    }
+
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/forums/`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          name: form.name,
-          description: form.description,
-          category_id: form.category_id || null,
-        }),
+      const res = await createForum({
+        title: name,
+        description,
+        category_id: categoryId,
       });
 
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || "Failed to create forum");
-      }
+      const newForum = res.data;
 
-      const data = await res.json();
-      const forumId = data.forum_id || data.id || data.fid;
-      navigate(`/forums/${forumId}`);
+      const newId =
+        newForum.fid ||
+        (newForum as any).FID ||
+        (newForum as any).id ||
+        (newForum as any).ID;
+
+      if (newId) {
+        navigate(`/forums/${newId}`);
+      } else {
+        setError("Forum created, but failed to retrieve ID for redirect.");
+        setTimeout(() => navigate("/forums"), 2000);
+      }
     } catch (err: any) {
-      setError(err.message || "Error creating forum");
+      console.error(err);
+      setError(err.message || "Failed to create forum");
     } finally {
       setLoading(false);
     }
   };
 
-  if (!token) {
-    navigate("/signin");
-    return null;
-  }
-
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="max-w-md mx-auto bg-white p-6 rounded-lg shadow-md mt-10"
-    >
-      <h2 className="text-2xl font-bold mb-6 text-center">Create Forum</h2>
+    <div className="min-h-screen bg-gray-100 flex justify-center py-10 px-4">
+      <div className="w-full max-w-2xl">
+        <h1 className="text-2xl font-bold text-gray-900 mb-6 pb-4 border-b border-gray-300">
+          Create a Community
+        </h1>
 
-      <div className="mb-4">
-        <label className="block mb-1 font-medium">
-          Forum Name:
-          <input
-            type="text"
-            name="name"
-            value={form.name}
-            onChange={handleChange}
-            required
-            className="w-full mt-1 p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
-            placeholder="Enter forum name"
-            minLength={3}
-          />
-        </label>
+        <form
+          onSubmit={handleSubmit}
+          className="bg-white p-6 rounded shadow space-y-6"
+        >
+          {error && (
+            <div className="bg-red-50 text-red-600 p-3 rounded text-sm border border-red-200">
+              {error}
+            </div>
+          )}
+
+          <div>
+            <label className="block text-lg font-medium text-gray-900 mb-1">
+              Name
+            </label>
+            <p className="text-xs text-gray-500 mb-2">
+              Community names including capitalization cannot be changed.
+            </p>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              maxLength={21}
+              className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none"
+              placeholder="Community name"
+            />
+            <div className="text-xs text-gray-400 mt-1 text-right">
+              {21 - name.length} Characters remaining
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-lg font-medium text-gray-900 mb-1">
+              Category
+            </label>
+            <select
+              value={categoryId || ""}
+              onChange={(e) => setCategoryId(Number(e.target.value))}
+              className="w-full p-2 border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
+            >
+              <option value="" disabled>
+                Select a Category
+              </option>
+              {categories.map((cat) => (
+                <option key={cat.id} value={cat.id}>
+                  {cat.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-lg font-medium text-gray-900 mb-1">
+              Description
+            </label>
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows={4}
+              className="w-full p-3 border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none"
+              placeholder="What is this community about?"
+            ></textarea>
+          </div>
+
+          <div className="flex justify-end gap-3 pt-4">
+            <button
+              type="button"
+              onClick={() => navigate(-1)}
+              className="px-4 py-2 border border-blue-600 text-blue-600 font-bold rounded-full hover:bg-blue-50 transition"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={loading}
+              className={`px-6 py-2 bg-blue-600 text-white font-bold rounded-full hover:bg-blue-700 transition ${
+                loading ? "opacity-50 cursor-not-allowed" : ""
+              }`}
+            >
+              {loading ? "Creating..." : "Create Community"}
+            </button>
+          </div>
+        </form>
       </div>
-
-      <div className="mb-4">
-        <label className="block mb-1 font-medium">
-          Description:
-          <textarea
-            name="description"
-            value={form.description}
-            onChange={handleChange}
-            className="w-full mt-1 p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-400 h-24"
-            placeholder="Describe your forum (optional)"
-          />
-        </label>
-      </div>
-
-      <div className="mb-6">
-        <label className="block mb-1 font-medium">
-          Category ID (optional):
-          <input
-            type="text"
-            name="category_id"
-            value={form.category_id}
-            onChange={handleChange}
-            className="w-full mt-1 p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
-            placeholder="Leave empty if no category"
-          />
-        </label>
-      </div>
-
-      {error && (
-        <div className="mb-4 text-red-600 rounded px-4 py-2 bg-red-50 border border-red-200">
-          {error}
-        </div>
-      )}
-
-      <button
-        type="submit"
-        disabled={loading}
-        className="w-full bg-blue-600 text-white font-semibold py-2 rounded hover:bg-blue-700 transition disabled:opacity-60"
-      >
-        {loading ? "Creating..." : "Create Forum"}
-      </button>
-    </form>
+    </div>
   );
 };
 

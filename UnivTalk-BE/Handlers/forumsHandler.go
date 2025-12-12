@@ -13,6 +13,24 @@ import (
 	"github.com/patrickmn/go-cache"
 )
 
+func getUserIDFromContext(c *gin.Context) (uuid.UUID, error) {
+	userIDInterface, exists := c.Get("user_id")
+	if !exists {
+		return uuid.Nil, fmt.Errorf("Unauthorized")
+	}
+
+	userIDStr, ok := userIDInterface.(string)
+	if ok {
+		return uuid.Parse(userIDStr)
+	}
+
+	if uid, ok := userIDInterface.(uuid.UUID); ok {
+		return uid, nil
+	}
+
+	return uuid.Nil, fmt.Errorf("User ID format error")
+}
+
 func isSystemAdmin(db *pg.DB, userID uuid.UUID) (bool, error) {
 	var user Models.Users
 	err := db.Model(&user).Column("is_admin").Where("uid = ?", userID).Select()
@@ -27,94 +45,73 @@ func GetCategories(c *gin.Context, db *pg.DB, ch *cache.Cache) {
 
 	if saved, found := ch.Get(cacheKey); found {
 		c.JSON(http.StatusOK, gin.H{
-			"categories": saved,
+			"data": saved,
 		})
 		return
 	}
 
-	var categories []Models.Categories
-	err := db.Model(&categories).Select()
+	categories := make([]Models.Categories, 0)
+
+	err := db.Model(&categories).Order("id ASC").Select()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error":  "Failed to retrieve categories",
-			"detail": err.Error(),
-		})
 		log.Printf("Get Categories Failed: %v", err.Error())
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Failed to retrieve categories",
+		})
 		return
 	}
 
 	ch.Set(cacheKey, categories, 1*time.Hour)
 
 	c.JSON(http.StatusOK, gin.H{
-		"categories": categories,
+		"data": categories,
 	})
 }
 
 func CreateForum(c *gin.Context, db *pg.DB, ch *cache.Cache) {
-	userIDInterface, exists := c.Get("user_id")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
-		return
-	}
-
-	userIDStr, ok := userIDInterface.(string)
-	if !ok {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "User ID format error"})
-		return
-	}
-
-	userID, err := uuid.Parse(userIDStr)
+	userID, err := getUserIDFromContext(c)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid User ID"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 		return
 	}
 
-	var forums Models.Forums
-	if err := c.ShouldBindJSON(&forums); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error":  "Invalid request",
-			"detail": err.Error(),
-		})
-		log.Printf("Create Forum Failed, Error: %v", err.Error())
+	var reqBody Models.Forums
+	if err := c.ShouldBindJSON(&reqBody); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request", "detail": err.Error()})
 		return
 	}
 
-	if forums.Title == "" || forums.Description == "" || forums.CategoryID == "" {
+	if reqBody.Title == "" || reqBody.Description == "" || reqBody.CategoryID == 0 {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error":  "All fields are required",
-			"detail": "One or more fields are empty",
+			"error": "All fields are required",
 		})
 		return
 	}
 
-	forum := &Models.Forums{
+	newForum := &Models.Forums{
 		FID:         uuid.New(),
-		Title:       forums.Title,
-		Description: forums.Description,
-		CategoryID:  forums.CategoryID,
+		Title:       reqBody.Title,
+		Description: reqBody.Description,
+		CategoryID:  reqBody.CategoryID,
 	}
 
-	_, err = db.Model(forum).Insert()
+	err = db.RunInTransaction(c.Request.Context(), func(tx *pg.Tx) error {
+		_, err := tx.Model(newForum).Insert()
+		if err != nil {
+			return err
+		}
+
+		forumMember := &Models.ForumMembers{
+			UserID:  userID,
+			ForumID: newForum.FID,
+			Role:    "admin",
+		}
+		_, err = tx.Model(forumMember).Insert()
+		return err
+	})
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error":  "Failed to create forum",
-			"detail": err.Error(),
-		})
-		return
-	}
-
-	forumMember := &Models.ForumMembers{
-		UserID:  userID,
-		ForumID: forum.FID,
-		Role:    "admin",
-	}
-
-	_, err = db.Model(forumMember).Insert()
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error":  "Failed to create forum member",
-			"detail": err.Error(),
-		})
+		log.Printf("Create Forum Transaction Failed: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create forum"})
 		return
 	}
 
@@ -122,6 +119,7 @@ func CreateForum(c *gin.Context, db *pg.DB, ch *cache.Cache) {
 
 	c.JSON(http.StatusCreated, gin.H{
 		"message": "Forum created successfully",
+		"data":    newForum,
 	})
 }
 
@@ -178,8 +176,6 @@ func GetForumByID(c *gin.Context, db *pg.DB, ch *cache.Cache) {
 			"error":  "Failed to retrieve forum",
 			"detail": err.Error(),
 		})
-
-		log.Printf("Get Forum By ID Failed: %v", err.Error())
 		return
 	}
 
@@ -199,21 +195,9 @@ func UpdateForum(c *gin.Context, db *pg.DB, ch *cache.Cache) {
 		return
 	}
 
-	userIDInterface, exists := c.Get("user_id")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
-		return
-	}
-
-	userIDStr, ok := userIDInterface.(string)
-	if !ok {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "User ID format error"})
-		return
-	}
-
-	userID, err := uuid.Parse(userIDStr)
+	userID, err := getUserIDFromContext(c)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid User ID"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -224,7 +208,6 @@ func UpdateForum(c *gin.Context, db *pg.DB, ch *cache.Cache) {
 	}
 
 	hasAccess := isSysAdmin
-
 	if !hasAccess {
 		var forumMember Models.ForumMembers
 		err := db.Model(&forumMember).
@@ -245,16 +228,13 @@ func UpdateForum(c *gin.Context, db *pg.DB, ch *cache.Cache) {
 		return
 	}
 
-	var forums Models.Forums
-	if err := c.ShouldBindJSON(&forums); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error":  "Invalid request",
-			"detail": err.Error(),
-		})
+	var reqBody Models.Forums
+	if err := c.ShouldBindJSON(&reqBody); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request", "detail": err.Error()})
 		return
 	}
 
-	if forums.Title == "" || forums.Description == "" || forums.CategoryID == "" {
+	if reqBody.Title == "" || reqBody.Description == "" || reqBody.CategoryID == 0 {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error":  "All fields are required",
 			"detail": "One or more fields are empty",
@@ -262,9 +242,7 @@ func UpdateForum(c *gin.Context, db *pg.DB, ch *cache.Cache) {
 		return
 	}
 
-	forums.UpdatedAt = time.Now()
-
-	res, err := db.Model(&forums).
+	res, err := db.Model(&reqBody).
 		Column("title", "description", "category_id", "updated_at").
 		Where("fid = ?", forumID).
 		Update()
@@ -300,21 +278,9 @@ func DeleteForum(c *gin.Context, db *pg.DB, ch *cache.Cache) {
 		return
 	}
 
-	userIDInterface, exists := c.Get("user_id")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
-		return
-	}
-
-	userIDStr, ok := userIDInterface.(string)
-	if !ok {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "User ID format error"})
-		return
-	}
-
-	userID, err := uuid.Parse(userIDStr)
+	userID, err := getUserIDFromContext(c)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid User ID"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -325,7 +291,6 @@ func DeleteForum(c *gin.Context, db *pg.DB, ch *cache.Cache) {
 	}
 
 	hasAccess := isSysAdmin
-
 	if !hasAccess {
 		var forumMember Models.ForumMembers
 		err := db.Model(&forumMember).
@@ -388,7 +353,6 @@ func GetForumMembersByID(c *gin.Context, db *pg.DB, ch *cache.Cache) {
 			"error":  "Failed to retrieve forum members",
 			"detail": err.Error(),
 		})
-		log.Printf("Get Forum Members By ID Failed: %v", err.Error())
 		return
 	}
 
@@ -406,21 +370,9 @@ func JoinForum(c *gin.Context, db *pg.DB, ch *cache.Cache) {
 		return
 	}
 
-	userIDInterface, exists := c.Get("user_id")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
-		return
-	}
-
-	userIDStr, ok := userIDInterface.(string)
-	if !ok {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "User ID format error"})
-		return
-	}
-
-	userID, err := uuid.Parse(userIDStr)
+	userID, err := getUserIDFromContext(c)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid User ID"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -453,21 +405,9 @@ func LeaveForum(c *gin.Context, db *pg.DB, ch *cache.Cache) {
 		return
 	}
 
-	userIDInterface, exists := c.Get("user_id")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
-		return
-	}
-
-	userIDStr, ok := userIDInterface.(string)
-	if !ok {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "User ID format error"})
-		return
-	}
-
-	userID, err := uuid.Parse(userIDStr)
+	userID, err := getUserIDFromContext(c)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid User ID"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 		return
 	}
 

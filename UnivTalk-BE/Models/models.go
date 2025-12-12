@@ -7,17 +7,18 @@ import (
 )
 
 type Users struct {
-	UID           uuid.UUID `json:"uid"`
-	Username      string    `json:"username"`
-	FirstName     string    `json:"first_name"`
-	LastName      string    `json:"last_name"`
-	University    string    `json:"university"`
-	Email         string    `json:"email"`
-	FirstPassword string    `json:"first_password"`
-	Password      string    `json:"password"`
-	Status        string    `json:"status"`
-	Salt          string    `json:"salt"`
-	IsAdmin       bool      `json:"is_admin"`
+	UID           uuid.UUID `pg:"uid,pk,type:uuid,default:gen_random_uuid()" json:"user_id"`
+	Username      string    `pg:"username,unique" json:"username" binding:"required"`
+	Email         string    `pg:"email,unique" json:"email" binding:"required"`
+	FirstName     string    `pg:"first_name" json:"first_name" binding:"required"`
+	LastName      string    `pg:"last_name" json:"last_name" binding:"required"`
+	Password      string    `pg:"password" json:"password,omitempty" binding:"required"`
+	FirstPassword string    `pg:"first_password" json:"-"`
+	Salt          string    `pg:"salt" json:"-"`
+	University    string    `pg:"university" json:"university" binding:"required"`
+	Status        string    `pg:"status" json:"status" binding:"required"`
+	IsAdmin       bool      `pg:"is_admin,default:false" json:"is_admin"`
+	CreatedAt     time.Time `pg:"created_at,default:now()" json:"created_at"`
 }
 
 type Payload struct {
@@ -29,7 +30,7 @@ type Forums struct {
 	FID         uuid.UUID `json:"fid"`
 	Title       string    `json:"title"`
 	Description string    `json:"description"`
-	CategoryID  string    `json:"category_id"`
+	CategoryID  int       `json:"category_id"`
 	UpdatedAt   time.Time `json:"updated_at"`
 }
 
@@ -49,15 +50,24 @@ type Posts struct {
 	MediaType string    `json:"media_type"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
+	User      *Users    `pg:"rel:has-one,fk:user_id" json:"user"`
+}
+
+type PostWithCounts struct {
+	Posts
+	Upvotes   int  `json:"upvotes"`
+	Downvotes int  `json:"downvotes"`
+	MyVote    *int `json:"my_vote"`
 }
 
 type Comments struct {
-	ID              int       `json:"id"`
+	ID              int       `pg:",pk" json:"id"`
 	PostID          int       `json:"post_id"`
 	UserID          uuid.UUID `json:"user_id"`
-	Body            string    `json:"body"`
 	ParentCommentID int       `json:"parent_comment_id"`
+	Body            string    `json:"body"`
 	CreatedAt       time.Time `json:"created_at"`
+	User            *Users    `pg:"rel:has-one,fk:user_id" json:"user"`
 }
 
 type Categories struct {
