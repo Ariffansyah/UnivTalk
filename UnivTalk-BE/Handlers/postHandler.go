@@ -92,14 +92,33 @@ func GetForumPostsByID(c *gin.Context, db *pg.DB, ch *cache.Cache) {
 }
 
 func CreatePost(c *gin.Context, db *pg.DB, ch *cache.Cache) {
-	var post Models.Posts
+	if err := c.Request.ParseMultipartForm(32 << 20); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "File upload error"})
+		return
+	}
 
-	if err := c.ShouldBind(&post); err != nil {
+	rawForumID := c.PostForm("forum_id")
+
+	cleanForumIDStr := strings.TrimSpace(rawForumID)
+	cleanForumIDStr = strings.Trim(cleanForumIDStr, `"'[]`)
+
+	forumID, err := uuid.Parse(cleanForumIDStr)
+	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error":  "Invalid request",
-			"detail": err.Error(),
+			"error":    "Invalid Forum ID format",
+			"received": rawForumID,
 		})
-		log.Printf("Create Post Failed, Bind Error: %v", err.Error())
+		return
+	}
+
+	post := Models.Posts{
+		Title:   c.PostForm("title"),
+		Body:    c.PostForm("body"),
+		ForumID: forumID,
+	}
+
+	if post.Title == "" || post.Body == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Title and Body are required"})
 		return
 	}
 
@@ -120,7 +139,6 @@ func CreatePost(c *gin.Context, db *pg.DB, ch *cache.Cache) {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid User ID"})
 		return
 	}
-
 	post.UserID = userID
 
 	file, err := c.FormFile("media")
@@ -134,7 +152,7 @@ func CreatePost(c *gin.Context, db *pg.DB, ch *cache.Cache) {
 		} else if allowedVideos[ext] {
 			post.MediaType = "video"
 		} else {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Unsupported file type. Allowed: jpg, png, gif, mp4, mov"})
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Unsupported file type"})
 			return
 		}
 
@@ -146,17 +164,7 @@ func CreatePost(c *gin.Context, db *pg.DB, ch *cache.Cache) {
 			log.Printf("File Save Error: %v", err)
 			return
 		}
-
 		post.MediaURL = "/uploads/" + newFileName
-	}
-
-	if post.ForumID == uuid.Nil || post.Title == "" || post.Body == "" {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error":  "All fields are required (ForumID, Title, Body)",
-			"detail": "One or more fields are empty",
-		})
-		log.Printf("Create Post Failed: One or more fields are empty")
-		return
 	}
 
 	_, err = db.Model(&post).Returning("*").Insert()
