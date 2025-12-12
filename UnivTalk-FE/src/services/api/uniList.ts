@@ -3,7 +3,7 @@ export async function fetchUniversitySuggestions(
 ): Promise<string[]> {
   if (!name) return [];
   const res = await fetch(
-    `https://api.arpthef.my.id/universities?name=${encodeURIComponent(name)}`,
+    `${import.meta.env.VITE_API_URL}/universities?name=${encodeURIComponent(name)}`,
   );
   if (!res.ok) return [];
   const data = await res.json();

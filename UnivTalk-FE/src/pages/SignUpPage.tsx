@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { fetchUniversitySuggestions } from "../services/api/uniList";
-import { signUp } from "../services/api/signUp";
+import { signUp } from "../services/api/authHandler.ts";
 
 const DEBOUNCE_DELAY = 400;
 
