@@ -13,6 +13,7 @@ import { getForumById, type Forum } from "../services/api/forums";
 import { useAuth } from "../context/AuthContext";
 import { changePassword, deleteAccount } from "../services/api/auth";
 import { fetchUniversitySuggestions } from "../services/api/uni";
+import { useAlert } from "../context/AlertContext";
 
 type PostWithVote = Post & { my_vote?: number | null };
 
@@ -23,6 +24,7 @@ const ProfilePage: React.FC = () => {
   const { user: currentUser } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const { showToast, showConfirm } = useAlert();
 
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [userPosts, setUserPosts] = useState<PostWithVote[]>([]);
@@ -132,7 +134,7 @@ const ProfilePage: React.FC = () => {
         (s) => s.toLowerCase() === editUniversity.trim().toLowerCase(),
       )
     ) {
-      alert("Please select a valid university from the suggestions.");
+      showToast("Please select a valid university from the suggestions.", "warning");
       return;
     }
 
@@ -156,9 +158,11 @@ const ProfilePage: React.FC = () => {
       const refreshed = await getUserProfile();
       if (refreshed && refreshed.profile) {
         setProfile(refreshed.profile);
+        showToast("Profile updated.", "success");
       }
     } catch (err) {
-      alert("Failed to update profile");
+      console.error(err);
+      showToast("Failed to update profile", "error");
     }
   };
 
@@ -250,7 +254,7 @@ const ProfilePage: React.FC = () => {
 
   const handleVote = async (postId: number, type: "upvote" | "downvote") => {
     if (!currentUser) {
-      alert("Please sign in to vote.");
+      showToast("Please sign in to vote.", "warning");
       return;
     }
     const target = userPosts.find((p) => p.id === postId);
@@ -333,7 +337,7 @@ const ProfilePage: React.FC = () => {
   const submitChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentPassword || !newPassword) {
-      alert("Please fill both password fields.");
+      showToast("Please fill both password fields.", "warning");
       return;
     }
     setPwdLoading(true);
@@ -343,19 +347,19 @@ const ProfilePage: React.FC = () => {
       setIsPasswordOpen(false);
       setCurrentPassword("");
       setNewPassword("");
-      alert("Password changed.");
+      showToast("Password changed.", "success");
     } else {
-      alert(res.message || "Failed to change password");
+      showToast(res.message || "Failed to change password", "error");
     }
   };
 
   const submitDeleteAccount = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!deletePwd) {
-      alert("Please enter your password to confirm.");
+      showToast("Please enter your password to confirm.", "warning");
       return;
     }
-    const confirm = window.confirm(
+    const confirm = await showConfirm(
       "This will permanently delete your account. Continue?",
     );
     if (!confirm) return;
@@ -365,7 +369,7 @@ const ProfilePage: React.FC = () => {
     if (res.success) {
       navigate("/signout");
     } else {
-      alert(res.message || "Failed to delete account");
+      showToast(res.message || "Failed to delete account", "error");
     }
   };
 

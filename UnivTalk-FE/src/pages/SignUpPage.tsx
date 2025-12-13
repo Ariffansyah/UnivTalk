@@ -3,13 +3,14 @@ import { fetchUniversitySuggestions } from "../services/api/uni";
 import { signUp } from "../services/api/auth.ts";
 import { useNavigate } from "react-router-dom";
 import logo from "../assets/LogoUnivTalk.png";
-
-<img src={logo} />
+import { useAlert } from "../context/AlertContext";
 
 const DEBOUNCE_DELAY = 400;
 
 const SignUpPage: React.FC = () => {
   const navigate = useNavigate();
+  const { showToast } = useAlert();
+
   const [form, setForm] = useState({
     username: "",
     firstName: "",
@@ -133,7 +134,7 @@ const SignUpPage: React.FC = () => {
       );
 
       if (response.success) {
-        alert("Registration successful! Please sign in.");
+        showToast("Registration successful! Please sign in.", "success");
         navigate("/signin");
       } else {
         setErrorMsg(response.message);
