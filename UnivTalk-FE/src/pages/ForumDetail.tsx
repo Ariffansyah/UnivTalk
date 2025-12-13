@@ -11,6 +11,7 @@ import {
 import { getPostsByForum, votePost, type Post } from "../services/api/posts";
 import { useAuth } from "../context/AuthContext";
 import CreatePostModal from "../components/CreatePostModal";
+import { useAlert } from "../context/AlertContext";
 
 const getValidDate = (dateString?: string) => {
   if (!dateString) return new Date();
@@ -32,6 +33,7 @@ const ForumDetail: React.FC = () => {
   const { forumId } = useParams<{ forumId: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { showToast, showConfirm } = useAlert();
 
   const [forum, setForum] = useState<Forum | null>(null);
   const [posts, setPosts] = useState<PostWithVote[]>([]);
@@ -60,7 +62,10 @@ const ForumDetail: React.FC = () => {
         created_at: p.created_at ?? p.CreatedAt,
       }));
       setPosts(mapped);
-    } catch {}
+    } catch (err) {
+      console.error("Failed fetching posts:", err);
+      showToast("Failed to fetch posts", "error");
+    }
   };
 
   useEffect(() => {
@@ -96,8 +101,11 @@ const ForumDetail: React.FC = () => {
               }
             }
           }
-        } catch {}
-      } catch {
+        } catch (err) {
+          console.error("Failed fetching members:", err);
+        }
+      } catch (err) {
+        console.error(err);
         setError("Failed to load data");
       } finally {
         setLoading(false);
@@ -111,7 +119,7 @@ const ForumDetail: React.FC = () => {
   const handleJoinLeave = async () => {
     if (!forumId || !user || joinLoading) return;
     if (hasAdminPower) {
-      alert("Admins cannot leave.");
+      showToast("Admins cannot leave.", "warning");
       return;
     }
     setJoinLoading(true);
@@ -121,13 +129,17 @@ const ForumDetail: React.FC = () => {
         setIsMember(false);
         setMyRole(null);
         setRealMemberCount((prev) => Math.max(0, prev - 1));
+        showToast("Left community.", "info");
       } else {
         await joinForum(forumId);
         setIsMember(true);
         setMyRole("member");
         setRealMemberCount((prev) => prev + 1);
+        showToast("Joined community.", "success");
       }
-    } catch {
+    } catch (err) {
+      console.error("Join/Leave error:", err);
+      showToast("Failed to update membership. Please try again.", "error");
     } finally {
       setJoinLoading(false);
     }
@@ -135,7 +147,7 @@ const ForumDetail: React.FC = () => {
 
   const handleVote = async (postId: number, type: "upvote" | "downvote") => {
     if (!user) {
-      alert("Please sign in to vote.");
+      showToast("Please sign in to vote.", "warning");
       return;
     }
     const targetPost = posts.find((p) => p.id === postId);
@@ -193,18 +205,24 @@ const ForumDetail: React.FC = () => {
     try {
       await votePost(postId, action);
       await fetchPosts();
-    } catch {
+    } catch (err) {
+      console.error("Vote failed:", err);
       await fetchPosts();
+      showToast("Failed to vote. Please try again.", "error");
     }
   };
 
   const handleDeleteForum = async () => {
-    if (!forumId || !window.confirm("DANGER: Delete this forum?")) return;
+    if (!forumId) return;
+    const ok = await showConfirm("DANGER: Delete this forum?");
+    if (!ok) return;
     try {
       await deleteForum(forumId);
+      showToast("Forum deleted.", "success");
       navigate("/forums");
-    } catch {
-      alert("Failed to delete forum");
+    } catch (err) {
+      console.error("Delete forum failed:", err);
+      showToast("Failed to delete forum", "error");
     }
   };
 
@@ -234,9 +252,13 @@ const ForumDetail: React.FC = () => {
       if (!res.ok) throw new Error("Failed to update forum");
       setIsEditOpen(false);
       const forumRes = await getForumById(forumId);
-      if (forumRes && forumRes.forum) setForum(forumRes.forum);
-    } catch {
-      alert("Failed to update forum");
+      if (forumRes && forumRes.forum) {
+        setForum(forumRes.forum);
+        showToast("Forum updated.", "success");
+      }
+    } catch (err) {
+      console.error("Update forum failed:", err);
+      showToast("Failed to update forum", "error");
     }
   };
 

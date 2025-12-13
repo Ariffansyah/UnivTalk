@@ -13,6 +13,7 @@ import {
   deleteComment as apiDeleteComment,
 } from "../services/api/posts";
 import { getForumById, type Forum } from "../services/api/forums";
+import { useAlert } from "../context/AlertContext";
 
 type Comment = {
   id: number;
@@ -36,6 +37,7 @@ const PostDetail: React.FC = () => {
   const { postId } = useParams<{ postId: string }>();
   const navigate = useNavigate();
   const { user: currentUser } = useAuth();
+  const { showToast, showConfirm } = useAlert();
 
   const [post, setPost] = useState<PostWithVote | null>(null);
   const [forum, setForum] = useState<Forum | null>(null);
@@ -163,8 +165,9 @@ const PostDetail: React.FC = () => {
       } else {
         throw new Error("Failed to post comment");
       }
-    } catch {
-      alert("Failed to post comment");
+    } catch (err) {
+      console.error("Failed to post comment:", err);
+      showToast("Failed to post comment", "error");
     } finally {
       setSubmitting(false);
     }
@@ -172,7 +175,7 @@ const PostDetail: React.FC = () => {
 
   const handleVotePost = async (type: "upvote" | "downvote") => {
     if (!currentUser || !post) {
-      alert("Please sign in to vote.");
+      showToast("Please sign in to vote.", "warning");
       return;
     }
     const currentVote = post.my_vote ?? null;
@@ -229,8 +232,10 @@ const PostDetail: React.FC = () => {
         my_vote: p.my_vote ?? null,
         created_at: (p as any).created_at ?? (p as any).CreatedAt,
       });
-    } catch {
+    } catch (err) {
+      console.error("Vote post failed:", err);
       await fetchPostAndComments();
+      showToast("Failed to vote. Please try again.", "error");
     }
   };
 
@@ -239,7 +244,7 @@ const PostDetail: React.FC = () => {
     type: "upvote" | "downvote",
   ) => {
     if (!currentUser) {
-      alert("Please sign in to vote.");
+      showToast("Please sign in to vote.", "warning");
       return;
     }
     if (pendingCommentVotes[commentId]) return;
@@ -312,8 +317,10 @@ const PostDetail: React.FC = () => {
             : c,
         ),
       );
-    } catch {
+    } catch (err) {
+      console.error("Vote comment failed:", err);
       await fetchPostAndComments();
+      showToast("Failed to vote. Please try again.", "error");
     } finally {
       setPendingCommentVotes((prev) => ({ ...prev, [commentId]: false }));
     }
@@ -342,20 +349,23 @@ const PostDetail: React.FC = () => {
       if (!res.ok) throw new Error("Failed to update post");
       setIsEditOpen(false);
       await fetchPostAndComments();
-    } catch {
-      alert("Failed to update post");
+    } catch (err) {
+      console.error("Update post failed:", err);
+      showToast("Failed to update post", "error");
     }
   };
 
   const handleDeletePost = async () => {
     if (!postId) return;
-    const ok = window.confirm("Delete this post permanently?");
+    const ok = await showConfirm("Delete this post permanently?");
     if (!ok) return;
     try {
       await apiDeletePost(postId);
+      showToast("Post deleted.", "success");
       navigate(-1);
-    } catch {
-      alert("Failed to delete post");
+    } catch (err) {
+      console.error("Delete post failed:", err);
+      showToast("Failed to delete post", "error");
     }
   };
 
@@ -372,19 +382,22 @@ const PostDetail: React.FC = () => {
       setEditingCommentId(null);
       setEditingCommentBody("");
       await fetchPostAndComments();
-    } catch {
-      alert("Failed to update comment");
+    } catch (err) {
+      console.error("Update comment failed:", err);
+      showToast("Failed to update comment", "error");
     }
   };
 
   const handleDeleteComment = async (commentId: number) => {
-    const ok = window.confirm("Delete this comment?");
+    const ok = await showConfirm("Delete this comment?");
     if (!ok) return;
     try {
       await apiDeleteComment(commentId);
       await fetchPostAndComments();
-    } catch {
-      alert("Failed to delete comment");
+      showToast("Comment deleted.", "success");
+    } catch (err) {
+      console.error("Delete comment failed:", err);
+      showToast("Failed to delete comment", "error");
     }
   };
 

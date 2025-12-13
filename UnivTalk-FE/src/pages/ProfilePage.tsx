@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { getUserProfile, type UserProfile } from "../services/api/auth";
 import { getUserProfileByID } from "../services/api/user";
@@ -12,14 +12,19 @@ import {
 import { getForumById, type Forum } from "../services/api/forums";
 import { useAuth } from "../context/AuthContext";
 import { changePassword, deleteAccount } from "../services/api/auth";
+import { fetchUniversitySuggestions } from "../services/api/uni";
+import { useAlert } from "../context/AlertContext";
 
 type PostWithVote = Post & { my_vote?: number | null };
+
+const DEBOUNCE_DELAY = 400;
 
 const ProfilePage: React.FC = () => {
   const { userId: userIdParam } = useParams<{ userId: string }>();
   const { user: currentUser } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const { showToast, showConfirm } = useAlert();
 
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [userPosts, setUserPosts] = useState<PostWithVote[]>([]);
@@ -33,6 +38,14 @@ const ProfilePage: React.FC = () => {
   const [editUsername, setEditUsername] = useState("");
   const [editUniversity, setEditUniversity] = useState("");
   const [editStatus, setEditStatus] = useState("");
+
+  // University suggestion states for edit profile (enforce selecting from suggestions)
+  const [uniSuggestions, setUniSuggestions] = useState<string[]>([]);
+  const [showUniSuggestions, setShowUniSuggestions] = useState(false);
+  const [uniLoading, setUniLoading] = useState(false);
+  const [selectedUni, setSelectedUni] = useState(false);
+  const uniDebounce = useRef<any>(null);
+  const uniInputRef = useRef<HTMLInputElement | null>(null);
 
   const [isPasswordOpen, setIsPasswordOpen] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
@@ -55,12 +68,76 @@ const ProfilePage: React.FC = () => {
     setEditLastName(profile.last_name || "");
     setEditUsername(profile.username || "");
     setEditUniversity(profile.university || "");
+    // existing university value came from server -> treat as selected (valid)
+    setSelectedUni(Boolean(profile.university));
     setEditStatus(profile.status || "");
     setIsEditOpen(true);
+    setUniSuggestions([]);
+    setShowUniSuggestions(false);
+  };
+
+  // Watch editUniversity to fetch suggestions (debounced) unless already selected
+  useEffect(() => {
+    if (!isEditOpen) return;
+
+    if (!editUniversity.trim() || selectedUni) {
+      setUniSuggestions([]);
+      setShowUniSuggestions(false);
+      setUniLoading(false);
+      if (uniDebounce.current) {
+        clearTimeout(uniDebounce.current);
+        uniDebounce.current = null;
+      }
+      return;
+    }
+
+    setUniLoading(true);
+    if (uniDebounce.current) clearTimeout(uniDebounce.current);
+
+    uniDebounce.current = setTimeout(async () => {
+      try {
+        const result = await fetchUniversitySuggestions(editUniversity);
+        setUniSuggestions(result);
+        setShowUniSuggestions(result.length > 0);
+      } catch (err) {
+        console.error("Failed fetching university suggestions:", err);
+        setUniSuggestions([]);
+        setShowUniSuggestions(false);
+      } finally {
+        setUniLoading(false);
+      }
+    }, DEBOUNCE_DELAY);
+
+    return () => {
+      if (uniDebounce.current) clearTimeout(uniDebounce.current);
+    };
+  }, [editUniversity, selectedUni, isEditOpen]);
+
+  const handleUniversityInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSelectedUni(false);
+    setEditUniversity(e.target.value);
+  };
+
+  const handleUniSuggestionClick = (univ: string) => {
+    setEditUniversity(univ);
+    setSelectedUni(true);
+    setShowUniSuggestions(false);
   };
 
   const submitEditProfile = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // enforce university selection from suggestions (unless it was the original value which we marked selected)
+    if (
+      !selectedUni &&
+      !uniSuggestions.some(
+        (s) => s.toLowerCase() === editUniversity.trim().toLowerCase(),
+      )
+    ) {
+      showToast("Please select a valid university from the suggestions.", "warning");
+      return;
+    }
+
     try {
       const res = await fetch(`${import.meta.env.VITE_API_URL}/profile`, {
         method: "PUT",
@@ -76,12 +153,16 @@ const ProfilePage: React.FC = () => {
       });
       if (!res.ok) throw new Error("Failed to update profile");
       setIsEditOpen(false);
+      setUniSuggestions([]);
+      setShowUniSuggestions(false);
       const refreshed = await getUserProfile();
       if (refreshed && refreshed.profile) {
         setProfile(refreshed.profile);
+        showToast("Profile updated.", "success");
       }
     } catch (err) {
-      alert("Failed to update profile");
+      console.error(err);
+      showToast("Failed to update profile", "error");
     }
   };
 
@@ -173,7 +254,7 @@ const ProfilePage: React.FC = () => {
 
   const handleVote = async (postId: number, type: "upvote" | "downvote") => {
     if (!currentUser) {
-      alert("Please sign in to vote.");
+      showToast("Please sign in to vote.", "warning");
       return;
     }
     const target = userPosts.find((p) => p.id === postId);
@@ -256,7 +337,7 @@ const ProfilePage: React.FC = () => {
   const submitChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentPassword || !newPassword) {
-      alert("Please fill both password fields.");
+      showToast("Please fill both password fields.", "warning");
       return;
     }
     setPwdLoading(true);
@@ -266,19 +347,19 @@ const ProfilePage: React.FC = () => {
       setIsPasswordOpen(false);
       setCurrentPassword("");
       setNewPassword("");
-      alert("Password changed.");
+      showToast("Password changed.", "success");
     } else {
-      alert(res.message || "Failed to change password");
+      showToast(res.message || "Failed to change password", "error");
     }
   };
 
   const submitDeleteAccount = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!deletePwd) {
-      alert("Please enter your password to confirm.");
+      showToast("Please enter your password to confirm.", "warning");
       return;
     }
-    const confirm = window.confirm(
+    const confirm = await showConfirm(
       "This will permanently delete your account. Continue?",
     );
     if (!confirm) return;
@@ -288,7 +369,7 @@ const ProfilePage: React.FC = () => {
     if (res.success) {
       navigate("/signout");
     } else {
-      alert(res.message || "Failed to delete account");
+      showToast(res.message || "Failed to delete account", "error");
     }
   };
 
@@ -434,12 +515,39 @@ const ProfilePage: React.FC = () => {
                 value={editUsername}
                 onChange={(e) => setEditUsername(e.target.value)}
               />
-              <input
-                className="w-full p-2 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-400"
-                placeholder="University"
-                value={editUniversity}
-                onChange={(e) => setEditUniversity(e.target.value)}
-              />
+              <div className="relative">
+                <input
+                  ref={uniInputRef}
+                  className="w-full p-2 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-400"
+                  placeholder="University"
+                  value={editUniversity}
+                  onChange={handleUniversityInput}
+                  onBlur={() => setTimeout(() => setShowUniSuggestions(false), 200)}
+                />
+                {showUniSuggestions && (
+                  <ul className="absolute z-50 bg-white border border-gray-300 w-full rounded-lg shadow-xl mt-1 max-h-48 overflow-y-auto">
+                    {uniLoading ? (
+                      <li className="px-4 py-3 text-sm text-gray-500 italic">
+                        Searching...
+                      </li>
+                    ) : uniSuggestions.length > 0 ? (
+                      uniSuggestions.map((univ) => (
+                        <li
+                          key={univ}
+                          onMouseDown={() => handleUniSuggestionClick(univ)}
+                          className="cursor-pointer px-4 py-2.5 text-sm hover:bg-blue-50 text-gray-700 border-b last:border-none"
+                        >
+                          {univ}
+                        </li>
+                      ))
+                    ) : (
+                      <li className="px-4 py-3 text-sm text-red-500">
+                        No universities found
+                      </li>
+                    )}
+                  </ul>
+                )}
+              </div>
               <select
                 className="w-full p-2 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-400"
                 value={editStatus}
@@ -453,7 +561,11 @@ const ProfilePage: React.FC = () => {
             <div className="flex gap-2 justify-end mt-4">
               <button
                 type="button"
-                onClick={() => setIsEditOpen(false)}
+                onClick={() => {
+                  setIsEditOpen(false);
+                  setUniSuggestions([]);
+                  setShowUniSuggestions(false);
+                }}
                 className="px-4 py-2 text-xs font-bold text-gray-500"
               >
                 Cancel
