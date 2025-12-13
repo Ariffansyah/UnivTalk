@@ -39,7 +39,6 @@ const ProfilePage: React.FC = () => {
   const [editUniversity, setEditUniversity] = useState("");
   const [editStatus, setEditStatus] = useState("");
 
-  // University suggestion states for edit profile (enforce selecting from suggestions)
   const [uniSuggestions, setUniSuggestions] = useState<string[]>([]);
   const [showUniSuggestions, setShowUniSuggestions] = useState(false);
   const [uniLoading, setUniLoading] = useState(false);
@@ -68,7 +67,6 @@ const ProfilePage: React.FC = () => {
     setEditLastName(profile.last_name || "");
     setEditUsername(profile.username || "");
     setEditUniversity(profile.university || "");
-    // existing university value came from server -> treat as selected (valid)
     setSelectedUni(Boolean(profile.university));
     setEditStatus(profile.status || "");
     setIsEditOpen(true);
@@ -76,7 +74,6 @@ const ProfilePage: React.FC = () => {
     setShowUniSuggestions(false);
   };
 
-  // Watch editUniversity to fetch suggestions (debounced) unless already selected
   useEffect(() => {
     if (!isEditOpen) return;
 
@@ -100,7 +97,6 @@ const ProfilePage: React.FC = () => {
         setUniSuggestions(result);
         setShowUniSuggestions(result.length > 0);
       } catch (err) {
-        console.error("Failed fetching university suggestions:", err);
         setUniSuggestions([]);
         setShowUniSuggestions(false);
       } finally {
@@ -127,14 +123,16 @@ const ProfilePage: React.FC = () => {
   const submitEditProfile = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // enforce university selection from suggestions (unless it was the original value which we marked selected)
     if (
       !selectedUni &&
       !uniSuggestions.some(
         (s) => s.toLowerCase() === editUniversity.trim().toLowerCase(),
       )
     ) {
-      showToast("Please select a valid university from the suggestions.", "warning");
+      showToast(
+        "Please select a valid university from the suggestions.",
+        "warning",
+      );
       return;
     }
 
@@ -161,7 +159,6 @@ const ProfilePage: React.FC = () => {
         showToast("Profile updated.", "success");
       }
     } catch (err) {
-      console.error(err);
       showToast("Failed to update profile", "error");
     }
   };
@@ -399,20 +396,20 @@ const ProfilePage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 py-10">
-      <div className="max-w-4xl mx-auto px-4">
+      <div className="max-w-4xl mx-auto px-2 sm:px-4">
         <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
           <div className="h-32 bg-linear-to-r from-blue-600 to-indigo-700 shadow-inner"></div>
 
-          <div className="px-8 pb-8">
-            <div className="relative flex justify-between items-end -mt-12 mb-6">
+          <div className="px-4 sm:px-8 pb-8">
+            <div className="relative flex flex-col sm:flex-row justify-between items-end -mt-10 sm:-mt-12 mb-6 gap-4">
               <div className="p-1.5 bg-white rounded-2xl shadow-md border border-gray-100">
-                <div className="w-24 h-24 md:w-32 md:h-32 bg-blue-50 rounded-xl flex items-center justify-center text-4xl md:text-5xl font-bold text-blue-600 uppercase border-2 border-blue-100">
+                <div className="w-20 h-20 sm:w-32 sm:h-32 bg-blue-50 rounded-xl flex items-center justify-center text-3xl sm:text-5xl font-bold text-blue-600 uppercase border-2 border-blue-100">
                   {profile.username.charAt(0)}
                 </div>
               </div>
 
               {isOwnProfile && (
-                <div className="flex gap-2">
+                <div className="flex flex-col sm:flex-row gap-2">
                   <button
                     onClick={openEditProfile}
                     className="px-4 py-2.5 bg-gray-900 text-white text-sm font-bold rounded-xl hover:bg-gray-800 transition shadow-lg"
@@ -450,7 +447,7 @@ const ProfilePage: React.FC = () => {
                 <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
                   University
                 </span>
-                <span className="text-gray-800 font-bold leading-tight">
+                <span className="text-gray-800 font-bold leading-tight warp-break-words">
                   {profile.university}
                 </span>
               </div>
@@ -522,7 +519,9 @@ const ProfilePage: React.FC = () => {
                   placeholder="University"
                   value={editUniversity}
                   onChange={handleUniversityInput}
-                  onBlur={() => setTimeout(() => setShowUniSuggestions(false), 200)}
+                  onBlur={() =>
+                    setTimeout(() => setShowUniSuggestions(false), 200)
+                  }
                 />
                 {showUniSuggestions && (
                   <ul className="absolute z-50 bg-white border border-gray-300 w-full rounded-lg shadow-xl mt-1 max-h-48 overflow-y-auto">
@@ -683,9 +682,9 @@ const ProfilePage: React.FC = () => {
                 <div
                   key={post.id}
                   onClick={() => navigate(`/posts/${post.id}`)}
-                  className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:border-blue-100 transition cursor-pointer group"
+                  className="bg-white p-6 rounded-2xl border border-blue-100 shadow-sm hover:shadow-md hover:border-blue-300 hover:bg-blue-50 transition cursor-pointer group"
                 >
-                  <div className="flex items-center justify-between mb-3">
+                  <div className="flex flex-col sm:flex-row items-center justify-between mb-3 gap-3">
                     <div className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">
                       {formatDate(post.created_at)}
                     </div>
@@ -706,19 +705,19 @@ const ProfilePage: React.FC = () => {
                   <p className="text-gray-600 text-sm line-clamp-2 mb-4 leading-relaxed">
                     {post.body}
                   </p>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center bg-gray-50 rounded-lg border border-gray-100 overflow-hidden">
+                  <div className="flex flex-wrap items-center justify-between">
+                    <div className="flex items-center bg-blue-50 rounded-lg border border-blue-100 overflow-hidden">
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
                           handleVote(post.id as number, "upvote");
                         }}
-                        className={`px-3 py-1.5 hover:bg-gray-200 transition font-bold text-xs ${upActive ? "text-blue-600" : "text-gray-600 hover:text-blue-600"}`}
+                        className={`px-3 py-1.5 hover:bg-blue-200 transition font-bold text-xs ${upActive ? "text-blue-600" : "text-blue-400 hover:text-blue-700"}`}
                         title={upActive ? "Remove upvote" : "Upvote"}
                       >
                         ▲
                       </button>
-                      <span className="text-xs font-bold text-gray-700 px-2">
+                      <span className="text-xs font-bold text-blue-900 px-2">
                         {voteCount}
                       </span>
                       <button
@@ -726,13 +725,13 @@ const ProfilePage: React.FC = () => {
                           e.stopPropagation();
                           handleVote(post.id as number, "downvote");
                         }}
-                        className={`px-3 py-1.5 hover:bg-gray-200 transition font-bold text-xs ${downActive ? "text-red-500" : "text-gray-600 hover:text-red-500"}`}
+                        className={`px-3 py-1.5 hover:bg-blue-200 transition font-bold text-xs ${downActive ? "text-red-500" : "text-blue-400 hover:text-red-500"}`}
                         title={downActive ? "Remove downvote" : "Downvote"}
                       >
                         ▼
                       </button>
                     </div>
-                    <div className="text-xs font-medium text-gray-400">
+                    <div className="text-xs font-medium text-blue-600 mt-2 sm:mt-0">
                       💬 Comment
                     </div>
                   </div>
@@ -747,3 +746,4 @@ const ProfilePage: React.FC = () => {
 };
 
 export default ProfilePage;
+

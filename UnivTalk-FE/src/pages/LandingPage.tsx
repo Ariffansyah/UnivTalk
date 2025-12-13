@@ -1,7 +1,12 @@
 import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { getForums, getCategories, type Forum, type Category } from "../services/api/forums";
+import {
+  getForums,
+  getCategories,
+  type Forum,
+  type Category,
+} from "../services/api/forums";
 import {
   getGlobalPosts,
   getPostVotes,
@@ -75,7 +80,10 @@ const LandingPage: React.FC = () => {
     const fetchData = async () => {
       setLoading(true);
       try {
-        const [forumRes, catRes] = await Promise.all([getForums(), getCategories()]);
+        const [forumRes, catRes] = await Promise.all([
+          getForums(),
+          getCategories(),
+        ]);
         if (forumRes && (forumRes as any).forums) {
           setForums((forumRes as any).forums);
         }
@@ -166,22 +174,25 @@ const LandingPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 text-gray-800">
-      <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-white text-gray-800">
+      <div className="max-w-7xl mx-auto py-10 px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          <div className="lg:col-span-3 space-y-6 order-2 lg:order-1">
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden sticky top-24">
-              <div className="p-4 bg-gray-50 border-b border-gray-100">
-                <h2 className="font-bold text-gray-900">Forums</h2>
+          <aside className="lg:col-span-3 space-y-6 order-2 lg:order-1">
+            <div className="bg-white rounded-xl shadow border border-blue-200 overflow-hidden sticky top-24">
+              <div className="p-4 bg-blue-50 border-b border-blue-100 flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-blue-600 mr-1"></span>
+                <h2 className="font-bold text-blue-700 tracking-wide text-sm">
+                  Forums
+                </h2>
               </div>
-              <div className="divide-y divide-gray-50 max-h-[60vh] overflow-y-auto custom-scrollbar">
+              <div className="divide-y divide-blue-50 max-h-[60vh] overflow-y-auto custom-scrollbar">
                 {forums.map((forum) => (
                   <Link
                     key={forum.fid}
                     to={`/forums/${forum.fid}`}
                     className="flex items-center gap-3 p-4 hover:bg-blue-50 transition group"
                   >
-                    <div className="shrink-0 w-8 h-8 rounded bg-blue-600 flex items-center justify-center text-white text-xs font-bold shadow-sm group-hover:scale-110 transition-transform uppercase">
+                    <div className="shrink-0 w-8 h-8 rounded-lg bg-blue-500 flex items-center justify-center text-white text-base font-semibold shadow group-hover:bg-blue-600 transition uppercase">
                       {forum.title.charAt(0)}
                     </div>
                     <div className="min-w-0">
@@ -190,43 +201,43 @@ const LandingPage: React.FC = () => {
                           {forum.title}
                         </p>
                         {forum.category_id && (
-                          <span className="text-[10px] text-gray-600 bg-gray-100 px-2 py-0.5 rounded-full">
-                            {categories.find((c) => c.id === forum.category_id)?.name}
+                          <span className="text-[10px] text-blue-800 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-100">
+                            {
+                              categories.find((c) => c.id === forum.category_id)
+                                ?.name
+                            }
                           </span>
                         )}
                       </div>
-                      <p className="text-[10px] text-gray-500">
-                        {forum.member_count} members
-                      </p>
                     </div>
                   </Link>
                 ))}
               </div>
               <Link
                 to="/forums"
-                className="block text-center py-3 text-xs font-bold text-blue-600 hover:bg-gray-50 border-t border-gray-50 transition"
+                className="block text-center py-3 text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 border-t border-blue-100 transition"
               >
                 View All Forums
               </Link>
             </div>
-          </div>
-
-          <div className="lg:col-span-6 space-y-4 order-1 lg:order-2">
-            <h2 className="text-xl font-bold text-gray-900 px-1">
-              Newest Discussions
-            </h2>
-
+          </aside>
+          <main className="lg:col-span-6 space-y-4 order-1 lg:order-2">
+            <div className="flex items-center gap-2 mb-4 px-1">
+              <h2 className="text-xl font-bold text-blue-800 tracking-tight">
+                Newest Discussions
+              </h2>
+            </div>
             {loading ? (
               <div className="space-y-4">
                 {[1, 2, 3].map((i) => (
                   <div
                     key={i}
-                    className="h-40 bg-white rounded-xl border border-gray-100 animate-pulse"
+                    className="h-36 bg-blue-50 rounded-xl border border-blue-100 animate-pulse"
                   ></div>
                 ))}
               </div>
             ) : posts.length === 0 ? (
-              <div className="bg-white p-12 rounded-xl border border-gray-100 text-center shadow-sm">
+              <div className="bg-white p-10 rounded-xl border-2 border-yellow-100 text-center shadow">
                 <div className="text-4xl mb-2">🚀</div>
                 <p className="text-gray-500 font-medium">
                   No posts yet. Start the first conversation!
@@ -245,11 +256,11 @@ const LandingPage: React.FC = () => {
                   <div
                     key={post.id}
                     onClick={() => navigate(`/posts/${post.id}`)}
-                    className="bg-white p-5 rounded-xl border border-gray-100 shadow-sm hover:border-blue-200 transition cursor-pointer group"
+                    className="bg-white p-6 rounded-xl border border-blue-100 shadow hover:shadow-lg hover:border-blue-300 hover:bg-blue-50 transition cursor-pointer group relative"
                   >
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-2 text-[11px] text-gray-500">
-                        <div className="w-5 h-5 rounded-full bg-indigo-100 flex items-center justify-center font-bold text-indigo-600 uppercase">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2 text-[12px] text-blue-700 font-semibold">
+                        <div className="w-6 h-6 rounded-full bg-blue-200 flex items-center justify-center font-bold text-blue-600 uppercase border border-blue-100">
                           {authorUsername.charAt(0)}
                         </div>
                         <button
@@ -257,71 +268,66 @@ const LandingPage: React.FC = () => {
                             e.stopPropagation();
                             navigate(`/profile/${post.user_id}`);
                           }}
-                          className="font-bold text-gray-700 hover:text-blue-600 underline-offset-2 hover:underline"
+                          className="hover:underline underline-offset-2"
                           title="View profile"
                         >
                           @{authorUsername}
                         </button>
-                        <span>•</span>
-                        <span>{formatDate(post.created_at)}</span>
+                        <span className="text-blue-400 font-normal">•</span>
+                        <span className="font-medium text-gray-400">
+                          {formatDate(post.created_at)}
+                        </span>
                       </div>
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
                           navigate(`/forums/${post.forum_id}`);
                         }}
-                        className="px-2 py-1.5 text-[10px] font-bold rounded bg-blue-50 text-blue-700 border border-blue-100 hover:bg-blue-100 transition"
+                        className="px-2 py-1.5 text-[11px] font-bold rounded bg-yellow-100 text-yellow-800 border border-yellow-200 hover:bg-yellow-200 transition"
                         title="View forum"
                       >
                         {forumMeta?.title ?? "Forum"}
                       </button>
                     </div>
-
-                    <h3 className="text-lg font-bold text-gray-900 group-hover:text-blue-600 transition mb-2">
+                    <h3 className="text-base font-bold text-blue-900 group-hover:text-blue-700 transition mb-1">
                       {post.title}
                     </h3>
-                    <p className="text-sm text-gray-600 line-clamp-3 mb-4 leading-relaxed whitespace-pre-wrap">
+                    <p className="text-sm text-gray-700 line-clamp-3 mb-3 leading-relaxed whitespace-pre-wrap">
                       {post.body}
                     </p>
-
                     {post.media_url && (
-                      <div className="mt-2 rounded-lg overflow-hidden bg-black border border-gray-100">
+                      <div className="mb-3 rounded-lg overflow-hidden bg-black border border-blue-100">
                         {isVideo(post.media_type) ? (
                           <video
                             src={getMediaUrl(post.media_url)}
                             controls
                             playsInline
                             preload="metadata"
-                            className="w-full max-h-60 rounded-lg"
+                            className="w-full max-h-52 rounded"
                           />
                         ) : (
                           <img
                             src={getMediaUrl(post.media_url)}
                             alt={post.title}
                             loading="lazy"
-                            className="w-full max-h-60 rounded-lg object-contain"
+                            className="w-full max-h-52 object-contain"
                           />
                         )}
                       </div>
                     )}
-
-                    <div className="flex items-center gap-4 border-t pt-3 border-gray-50">
-                      <div className="flex items-center bg-gray-50 rounded-lg border border-gray-100 overflow-hidden">
+                    <div className="flex flex-wrap items-center gap-4 border-t pt-2 border-blue-50">
+                      <div className="flex items-center bg-blue-50 rounded-lg border border-blue-100 overflow-hidden">
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
                             handleVote(post.id as number, "upvote");
                           }}
-                          className={`px-2 py-1 hover:bg-gray-200 transition font-bold text-xs ${
-                            upActive
-                              ? "text-blue-600"
-                              : "text-gray-600 hover:text-blue-600"
-                          }`}
+                          className={`px-3 py-1.5 hover:bg-blue-200 transition font-bold ${upActive ? "text-blue-600" : "text-blue-400 hover:text-blue-700"}`}
                           title={upActive ? "Remove upvote" : "Upvote"}
                         >
                           ▲
                         </button>
-                        <span className="text-xs font-bold text-gray-700 px-2">
+                        <span className="text-sm font-bold text-blue-900 px-1">
                           {voteCount}
                         </span>
                         <button
@@ -329,54 +335,51 @@ const LandingPage: React.FC = () => {
                             e.stopPropagation();
                             handleVote(post.id as number, "downvote");
                           }}
-                          className={`px-2 py-1 hover:bg-gray-200 transition font-bold text-xs ${
-                            downActive
-                              ? "text-red-500"
-                              : "text-gray-600 hover:text-red-500"
-                          }`}
+                          className={`px-3 py-1.5 hover:bg-blue-200 transition font-bold ${downActive ? "text-red-500" : "text-blue-400 hover:text-red-500"}`}
                           title={downActive ? "Remove downvote" : "Downvote"}
                         >
                           ▼
                         </button>
                       </div>
-                      <div className="text-xs font-medium text-gray-400">
-                        💬 Comment
-                      </div>
+                      <button
+                        className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-50 rounded-lg transition"
+                        onClick={() => navigate(`/posts/${post.id}`)}
+                      >
+                        <span>💬</span> <span>Comment</span>
+                      </button>
                     </div>
                   </div>
                 );
               })
             )}
-          </div>
-
-          <div className="lg:col-span-3 space-y-6 order-3">
-            <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm sticky top-24">
+          </main>
+          <aside className="lg:col-span-3 space-y-6 order-3">
+            <div className="bg-white p-6 rounded-xl border border-blue-200 shadow sticky top-24">
               {user ? (
                 <>
-                  <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg border border-blue-100 mb-6">
-                    <div className="w-10 h-10 rounded-full bg-linear-to-tr from-blue-600 to-indigo-600 text-white flex items-center justify-center font-bold shadow-md uppercase">
+                  <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg border border-blue-100 mb-6 shadow">
+                    <div className="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold uppercase text-lg border border-blue-100">
                       {user.username.charAt(0)}
                     </div>
                     <div className="min-w-0">
-                      <p className="text-xs text-blue-600 font-bold">
+                      <p className="text-xs text-blue-700 font-bold">
                         Logged in as
                       </p>
-                      <p className="text-sm font-bold text-gray-800 truncate">
+                      <p className="text-base font-bold text-gray-800 truncate">
                         @{user.username}
                       </p>
                     </div>
                   </div>
-
                   <div className="space-y-3">
                     <button
                       onClick={() => navigate("/forums/new")}
-                      className="block w-full text-center bg-gray-900 text-white text-sm font-bold py-3 rounded-lg hover:bg-gray-800 transition shadow-lg shadow-gray-200"
+                      className="block w-full text-center bg-blue-600 text-white text-sm font-bold py-3 rounded-lg hover:bg-blue-800 transition shadow"
                     >
                       + Create Forum
                     </button>
                     <Link
                       to="/profile"
-                      className="block w-full text-center border border-gray-200 text-gray-700 text-sm font-bold py-3 rounded-lg hover:bg-gray-50 transition"
+                      className="block w-full text-center border border-blue-200 text-blue-700 text-sm font-bold py-3 rounded-lg hover:bg-blue-50 transition"
                     >
                       My Profile
                     </Link>
@@ -384,15 +387,15 @@ const LandingPage: React.FC = () => {
                 </>
               ) : (
                 <div className="space-y-4 text-center">
-                  <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center mx-auto text-blue-600 text-xl font-bold mb-2">
+                  <div className="w-11 h-11 bg-yellow-200 rounded-xl flex items-center justify-center mx-auto text-blue-900 text-lg font-bold mb-2 shadow">
                     UT
                   </div>
-                  <p className="text-sm text-gray-600 font-medium">
+                  <p className="text-sm text-gray-700 font-medium">
                     Join UnivTalk to start discussing with fellow students.
                   </p>
                   <Link
                     to="/signup"
-                    className="block w-full bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700 transition"
+                    className="block w-full bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700 transition shadow"
                   >
                     Sign Up
                   </Link>
@@ -404,12 +407,11 @@ const LandingPage: React.FC = () => {
                   </Link>
                 </div>
               )}
-
-              <div className="mt-8 pt-6 border-t border-gray-100">
-                <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-4">
+              <div className="mt-8 pt-6 border-t border-blue-100">
+                <h3 className="text-[11px] font-extrabold text-blue-500 uppercase tracking-widest mb-4">
                   UnivTalk Rules
                 </h3>
-                <ul className="text-[12px] space-y-3 text-gray-600">
+                <ul className="text-[13px] space-y-3 text-gray-600">
                   <li className="flex items-start gap-2">
                     <span className="text-green-500 font-bold">1.</span>
                     Be respectful to fellow students.
@@ -425,7 +427,25 @@ const LandingPage: React.FC = () => {
                 </ul>
               </div>
             </div>
-          </div>
+            <div className="rounded-xl bg-yellow-50 px-6 py-4 text-yellow-800 text-center font-semibold border border-yellow-100 shadow text-sm">
+              <svg
+                className="w-6 h-6 mx-auto mb-2 text-yellow-400"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <circle cx="12" cy="12" r="10" strokeWidth="2" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M8 15s1.5-2 4-2 4 2 4 2M12 13v.01"
+                />
+              </svg>
+              Your university community is more fun when you contribute.{" "}
+              <span className="font-bold">Post, Vote, Discuss!</span>
+            </div>
+          </aside>
         </div>
       </div>
     </div>

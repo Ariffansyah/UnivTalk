@@ -18,7 +18,9 @@ const ForumList: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [categories, setCategories] = useState<{ id: number; name: string }[]>([]);
+  const [categories, setCategories] = useState<{ id: number; name: string }[]>(
+    [],
+  );
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
   const [displayLimit, setDisplayLimit] = useState(10);
 
@@ -49,7 +51,9 @@ const ForumList: React.FC = () => {
       const matchesText =
         forum.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         forum.description.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesCategory = selectedCategory ? forum.category_id === selectedCategory : true;
+      const matchesCategory = selectedCategory
+        ? forum.category_id === selectedCategory
+        : true;
       return matchesText && matchesCategory;
     });
     setFilteredForums(filtered);
@@ -85,7 +89,7 @@ const ForumList: React.FC = () => {
   const forumsToShow = filteredForums.slice(0, displayLimit);
 
   return (
-    <div className="max-w-4xl mx-auto py-10 px-4">
+    <div className="max-w-4xl mx-auto py-10 px-2 sm:px-4">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Forums</h1>
@@ -94,8 +98,8 @@ const ForumList: React.FC = () => {
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
-          <div className="relative flex-1 md:w-64">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="relative flex-1 min-w-[170px] md:w-64">
             <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400">
               <svg
                 className="h-5 w-5"
@@ -114,7 +118,7 @@ const ForumList: React.FC = () => {
             <input
               type="text"
               placeholder="Search forums..."
-              className="block w-full pl-10 pr-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white text-sm transition"
+              className="block w-full pl-10 pr-3 py-2 border border-blue-100 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white text-sm transition"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
@@ -123,8 +127,12 @@ const ForumList: React.FC = () => {
           <div>
             <select
               value={selectedCategory ?? ""}
-              onChange={(e) => setSelectedCategory(e.target.value ? Number(e.target.value) : null)}
-              className="py-2 px-3 border border-gray-200 rounded-lg bg-white text-sm"
+              onChange={(e) =>
+                setSelectedCategory(
+                  e.target.value ? Number(e.target.value) : null,
+                )
+              }
+              className="py-2 px-3 border border-blue-100 rounded-lg bg-white text-sm"
             >
               <option value="">All Categories</option>
               {categories.map((c) => (
@@ -137,7 +145,7 @@ const ForumList: React.FC = () => {
           {selectedCategory && (
             <button
               onClick={() => setSelectedCategory(null)}
-              className="text-sm text-gray-500 px-3 py-2 border border-gray-200 rounded-lg bg-white hover:bg-gray-50"
+              className="text-sm text-gray-500 px-3 py-2 border border-blue-100 rounded-lg bg-white hover:bg-blue-50 transition"
             >
               Clear
             </button>
@@ -159,9 +167,11 @@ const ForumList: React.FC = () => {
       )}
 
       {forumsToShow.length === 0 ? (
-        <div className="text-center py-20 bg-white rounded-2xl border border-dashed border-gray-300">
+        <div className="text-center py-20 bg-white rounded-2xl border border-dashed border-blue-100">
           <h3 className="text-lg font-bold text-gray-800">No forums found</h3>
-          <p className="text-gray-500">Try adjusting your search or category.</p>
+          <p className="text-gray-500">
+            Try adjusting your search or category.
+          </p>
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-4">
@@ -170,32 +180,40 @@ const ForumList: React.FC = () => {
             return (
               <div
                 key={forum.fid}
-                className="bg-white border border-gray-100 p-6 rounded-2xl shadow-sm hover:shadow-md hover:border-blue-200 transition group"
+                className="bg-white border border-blue-100 p-6 rounded-2xl shadow-sm hover:shadow-lg hover:border-blue-300 hover:bg-blue-50 transition group"
               >
                 <Link
                   to={`/forums/${forum.fid}`}
                   className="flex items-start gap-5"
                 >
-                  <div className="shrink-0 w-14 h-14 rounded-xl bg-linear-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-2xl font-bold shadow-sm uppercase">
+                  <div className="shrink-0 w-14 h-14 rounded-xl bg-blue-500 flex items-center justify-center text-white text-2xl font-bold shadow-sm uppercase group-hover:bg-blue-600 transition">
                     {forum.title.charAt(0)}
                   </div>
 
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between gap-2">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                       <h2 className="text-xl font-bold text-gray-900 group-hover:text-blue-600 transition truncate">
                         {forum.title}
                       </h2>
 
-                      <div className="flex items-center gap-2">
-                        {categories && categories.length > 0 && forum.category_id && (
-                          <span
-                            onClick={() => setSelectedCategory(forum.category_id ?? null)}
-                            role="button"
-                            className={`text-xs font-bold px-3 py-1 rounded-full cursor-pointer ${selectedCategory === forum.category_id ? "bg-blue-600 text-white" : "text-gray-600 bg-gray-100"}`}
-                          >
-                            {categories.find((c) => c.id === forum.category_id)?.name}
-                          </span>
-                        )}
+                      <div className="flex items-center gap-2 mt-1 sm:mt-0">
+                        {categories &&
+                          categories.length > 0 &&
+                          forum.category_id && (
+                            <span
+                              onClick={() =>
+                                setSelectedCategory(forum.category_id ?? null)
+                              }
+                              role="button"
+                              className={`text-xs font-bold px-3 py-1 rounded-full cursor-pointer ${selectedCategory === forum.category_id ? "bg-blue-600 text-white" : "text-blue-700 bg-blue-50 border border-blue-100"} transition`}
+                            >
+                              {
+                                categories.find(
+                                  (c) => c.id === forum.category_id,
+                                )?.name
+                              }
+                            </span>
+                          )}
                         <span className="shrink-0 text-xs font-bold text-blue-600 bg-blue-50 px-3 py-1 rounded-full">
                           View
                         </span>
@@ -206,8 +224,7 @@ const ForumList: React.FC = () => {
                       {forum.description}
                     </p>
 
-                    <div className="flex items-center gap-5 mt-4 text-xs text-gray-400 font-bold uppercase tracking-wider">
-                      <span>{forum.member_count} Members</span>
+                    <div className="flex flex-wrap items-center gap-5 mt-4 text-xs text-gray-400 font-bold uppercase tracking-wider">
                       <span>{getYear(createdAt)} Established</span>
                     </div>
                   </div>

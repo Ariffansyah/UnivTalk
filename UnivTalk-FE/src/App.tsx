@@ -39,7 +39,6 @@ function App() {
                 <Route path="/profile/:userId" element={<ProfilePage />} />
               </Route>
             </Route>
-
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Router>

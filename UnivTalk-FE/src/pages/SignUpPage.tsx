@@ -147,136 +147,155 @@ const SignUpPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-600 to-yellow-100 flex items-center justify-center p-4">
+    <div
+      className="min-h-screen flex items-center justify-center p-4"
+      style={{ backgroundColor: "#2563eb", backgroundImage: "none" }}
+    >
+      <div
+        className="absolute inset-0 -z-10"
+        style={{
+          backgroundColor: "#fef9c3",
+          opacity: 0.28,
+        }}
+      ></div>
       <form
         onSubmit={handleSubmit}
-        className="w-full max-w-lg bg-white rounded-xl shadow-2xl p-8max-w-md mx-auto bg-white p-8 rounded-xl shadow-lg border border-gray-200"
+        className="w-full max-w-lg  p-8max-w-md mx-auto bg-white p-8 rounded-xl shadow-lg border border-gray-200"
+        style={{ position: "relative" }}
       >
         <div className="text-center mb-8">
-          <img src={logo} alt="UnivTalk Logo" className="w-32 mx-auto mb-4" />
-          <img
-            src={logo}
-            alt="UnivTalk Logo"
-            className="w-32 mx-auto"
-          />
-          <h2 className="text-2xl font-semibold text-gray-700">Create Account</h2>
-          <p className="text-gray-500 text-sm mt-1">Join our university community</p>
+          <img src={logo} alt="UnivTalk Logo" className="w-32 mx-auto" />
+          <h2 className="text-2xl font-semibold text-gray-700">
+            Create Account
+          </h2>
+          <p className="text-gray-500 text-sm mt-1">
+            Join our university community
+          </p>
         </div>
 
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-4 mb-5">
-          <div>
-            <label className="block text-gray-700 font-semibold mb-2">
-              First Name
-            </label>
-            <input
-              type="text"
-              name="firstName"
-              value={form.firstName}
-              onChange={handleChange}
-              required
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-              minLength={2}
-              placeholder="First name"
-            />
+            <div>
+              <label className="block text-gray-700 font-semibold mb-2">
+                First Name
+              </label>
+              <input
+                type="text"
+                name="firstName"
+                value={form.firstName}
+                onChange={handleChange}
+                required
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                minLength={2}
+                placeholder="First name"
+              />
+            </div>
+            <div>
+              <label className="block text-gray-700 font-semibold mb-2">
+                Last Name
+              </label>
+              <input
+                type="text"
+                name="lastName"
+                value={form.lastName}
+                onChange={handleChange}
+                required
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                minLength={2}
+                placeholder="Last name"
+              />
+            </div>
           </div>
-          <div>
-            <label className="block text-gray-700 font-semibold mb-2">
-              Last Name
-            </label>
-            <input
-              type="text"
-              name="lastName"
-              value={form.lastName}
-              onChange={handleChange}
-              required
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-              minLength={2}
-              placeholder="Last name"
-            />
-          </div>
-        </div>
-
-        <div className="mb-5">
-          <label className="block text-gray-700 font-semibold mb-2">
-            Username
-          </label>
-          <input
-            type="text"
-            name="username"
-            value={form.username}
-            onChange={handleChange}
-            required
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-            minLength={8}
-            placeholder="At least 8 characters"
-          />
-        </div>
 
           <div className="mb-5">
-          <label className="block text-gray-700 font-semibold mb-2">
-            Email Addres
-          </label>
-          <input
-            type="email"
-            name="email"
-            value={form.email}
-            onChange={handleChange}
-            required
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-            placeholder="name@university.edu"
+            <label className="block text-gray-700 font-semibold mb-2">
+              Username
+            </label>
+            <input
+              type="text"
+              name="username"
+              value={form.username}
+              onChange={handleChange}
+              required
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+              minLength={8}
+              placeholder="At least 8 characters"
+            />
+          </div>
+
+          <div className="mb-5">
+            <label className="block text-gray-700 font-semibold mb-2">
+              Email Addres
+            </label>
+            <input
+              type="email"
+              name="email"
+              value={form.email}
+              onChange={handleChange}
+              required
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+              placeholder="name@university.edu"
             />
           </div>
 
           <div className="grid grid-cols-2 gap-4 mb-5">
-          <div>
-            <label className="block text-gray-700 font-semibold mb-2">
-              Password
-            </label>
-            <div className="relative">
-              <input
-                type={showPassword ? "text" : "password"}
-                name="password"
-                value={form.password}
-                onChange={handleChange}
-              required
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-              minLength={8}
-              placeholder="At least 8 chars"
-            /> 
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-3 text-gray-500 hover:text-gray-700"
-            >
-              {showPassword ? <i className="fa-solid fa-eye"></i> : <i className="fa-solid fa-eye-slash"></i>}
-            </button>
+            <div>
+              <label className="block text-gray-700 font-semibold mb-2">
+                Password
+              </label>
+              <div className="relative">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  name="password"
+                  value={form.password}
+                  onChange={handleChange}
+                  required
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                  minLength={8}
+                  placeholder="At least 8 chars"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-3 text-gray-500 hover:text-gray-700"
+                >
+                  {showPassword ? (
+                    <i className="fa-solid fa-eye"></i>
+                  ) : (
+                    <i className="fa-solid fa-eye-slash"></i>
+                  )}
+                </button>
+              </div>
+            </div>
+            <div>
+              <label className="block text-gray-700 font-semibold mb-2">
+                Confirm Password
+              </label>
+              <div className="relative">
+                <input
+                  type={showConfirmPassword ? "text" : "password"}
+                  name="confirmPassword"
+                  value={form.confirmPassword}
+                  onChange={handleChange}
+                  required
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition pr-10"
+                  minLength={8}
+                  placeholder="Repeat password"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute right-3 top-3 text-gray-500 hover:text-gray-700"
+                >
+                  {showConfirmPassword ? (
+                    <i className="fa-solid fa-eye"></i>
+                  ) : (
+                    <i className="fa-solid fa-eye-slash"></i>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
-          <div>
-            <label className="block text-gray-700 font-semibold mb-2">
-              Confirm Password
-            </label>
-            <div className="relative">
-            <input
-              type={showConfirmPassword ? "text" : "password"}
-              name="confirmPassword"
-              value={form.confirmPassword}
-              onChange={handleChange}
-              required
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition pr-10"
-              minLength={8}
-              placeholder="Repeat password"
-            /><button
-              type="button"
-              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-              className="absolute right-3 top-3 text-gray-500 hover:text-gray-700"
-            >
-              {showConfirmPassword ? <i className="fa-solid fa-eye"></i> : <i className="fa-solid fa-eye-slash"></i>}
-            </button>
-            </div>
-          </div>
-        </div>
 
           <div className="relative">
             <label className="block text-gray-700 font-semibold mb-2">
@@ -366,3 +385,4 @@ const SignUpPage: React.FC = () => {
 };
 
 export default SignUpPage;
+

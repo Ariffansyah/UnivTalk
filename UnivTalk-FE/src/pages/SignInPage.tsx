@@ -2,10 +2,7 @@ import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { signIn, getUserProfile } from "../services/api/auth.ts";
 import { useAuth } from "../context/AuthContext";
-import { signIn } from "../services/api/auth.ts";
 import logo from "../assets/LogoUnivTalk.png";
-
-<img src={logo} />
 
 const SignInPage: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
@@ -48,15 +45,16 @@ const SignInPage: React.FC = () => {
           try {
             profileRes = await getUserProfile();
             if (profileRes.success && profileRes.profile) break;
-          } catch (err) {
-          }
+          } catch (err) {}
           await new Promise((r) => setTimeout(r, delays[i] ?? 500));
         }
         if (profileRes && profileRes.success && profileRes.profile) {
           setUser(profileRes.profile);
           navigate("/", { replace: true });
         } else {
-          setErrorMsg("Failed to fetch user profile after sign-in. Please refresh the page.");
+          setErrorMsg(
+            "Failed to fetch user profile after sign-in. Please refresh the page.",
+          );
         }
       } else {
         setErrorMsg(res.message);
@@ -69,20 +67,27 @@ const SignInPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-600 to-yellow-100 flex items-center justify-center p-4">
-      <div className="max-w-md w-full bg-white p-8 rounded-xl shadow-lg border border-gray-200">
+    <div
+      className="min-h-screen flex items-center justify-center p-4"
+      style={{ backgroundColor: "#2563eb", backgroundImage: "none" }}
+    >
+      <div
+        className="absolute inset-0 -z-10"
+        style={{
+          backgroundColor: "#fef9c3",
+          opacity: 0.28,
+        }}
+      ></div>
+      <div
+        className="max-w-md w-full bg-white p-8 rounded-xl shadow-lg border border-gray-200"
+        style={{ position: "relative" }}
+      >
         <div className="text-center mb-8">
-            <img src={logo} alt="UnivTalk Logo" className="w-32 mx-auto" />
+          <img src={logo} alt="UnivTalk Logo" className="w-32 mx-auto" />
           <h2 className="text-2xl font-semibold text-gray-700">Sign In</h2>
-          <p className="text-gray-500 text-sm mt-1">Welcome back to our community</p>
-          <div className="text-center mb-8">
-          <img
-            src={logo}
-            alt="UnivTalk Logo"
-            className="w-32 mx-auto"
-          />
-          <h2 className="text-2xl font-semibold text-gray-700">Create Account</h2>
-          <p className="text-gray-500 text-sm mt-1">Join our university community</p>
+          <p className="text-gray-500 text-sm mt-1">
+            Welcome back to our community
+          </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -129,39 +134,39 @@ const SignInPage: React.FC = () => {
           </div>
 
           <div className="mb-6">
-  <label
-    htmlFor="password"
-    className="block text-sm font-medium text-gray-700 mb-2"
-  >
-    Password
-  </label>
+            <label
+              htmlFor="password"
+              className="block text-sm font-medium text-gray-700 mb-2"
+            >
+              Password
+            </label>
 
-  <div className="relative">
-    <input
-      id="password"
-      type={showPassword ? "text" : "password"}
-      name="password"
-      required
-      value={formData.password}
-      onChange={handleChange}
-      placeholder="Enter your password"
-      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
-    />
+            <div className="relative">
+              <input
+                id="password"
+                type={showPassword ? "text" : "password"}
+                name="password"
+                required
+                value={formData.password}
+                onChange={handleChange}
+                placeholder="Enter your password"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
+              />
 
-    <button
-      type="button"
-      onClick={() => setShowPassword(!showPassword)}
-      className="absolute right-3 top-3 text-gray-500 hover:text-gray-700"
-    >
-      {showPassword ? (
-        <i className="fa-solid fa-eye"></i>
-      ) : (
-        <i className="fa-solid fa-eye-slash"></i>
-      )}
-    </button>
-  </div>
-</div>
-
+              <button
+                type="button"
+                tabIndex={-1}
+                onClick={() => setShowPassword((prev) => !prev)}
+                className="absolute right-3 top-3 text-gray-500 hover:text-gray-700"
+              >
+                {showPassword ? (
+                  <i className="fa-solid fa-eye"></i>
+                ) : (
+                  <i className="fa-solid fa-eye-slash"></i>
+                )}
+              </button>
+            </div>
+          </div>
 
           <button
             type="submit"

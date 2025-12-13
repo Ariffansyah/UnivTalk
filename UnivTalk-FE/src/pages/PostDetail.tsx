@@ -446,7 +446,7 @@ const PostDetail: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-3xl mx-auto px-4">
+      <div className="max-w-3xl mx-auto px-2 sm:px-4">
         <button
           onClick={() => navigate(-1)}
           className="mb-4 flex items-center gap-2 text-sm font-bold text-blue-600 hover:underline transition"
@@ -454,11 +454,11 @@ const PostDetail: React.FC = () => {
           ← Back
         </button>
 
-        <article className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-8">
+        <article className="bg-white rounded-2xl shadow-sm border border-blue-100 overflow-hidden mb-8">
           <div className="p-6">
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex flex-col md:flex-row md:items-center justify-between mb-4 gap-2">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-linear-to-tr from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold uppercase">
+                <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold uppercase">
                   {postAuthor.charAt(0)}
                 </div>
                 <div>
@@ -530,21 +530,21 @@ const PostDetail: React.FC = () => {
               </div>
             )}
 
-            <div className="flex items-center gap-4 pt-4 border-t border-gray-50">
-              <div className="flex items-center bg-gray-50 rounded-lg border border-gray-100">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 pt-4 border-t border-blue-100">
+              <div className="flex items-center bg-blue-50 rounded-lg border border-blue-100">
                 <button
                   onClick={() => handleVotePost("upvote")}
-                  className={`px-4 py-2 transition font-bold ${upActive ? "text-blue-600 hover:bg-gray-200" : "text-gray-500 hover:text-blue-600 hover:bg-gray-200"}`}
+                  className={`px-4 py-2 transition font-bold ${upActive ? "text-blue-600 hover:bg-blue-200" : "text-blue-400 hover:text-blue-700 hover:bg-blue-200"}`}
                   title={upActive ? "Remove upvote" : "Upvote"}
                 >
                   ▲
                 </button>
-                <span className="px-2 font-bold text-gray-700">
+                <span className="px-2 font-bold text-blue-900">
                   {voteCount}
                 </span>
                 <button
                   onClick={() => handleVotePost("downvote")}
-                  className={`px-4 py-2 transition font-bold ${downActive ? "text-red-500 hover:bg-gray-200" : "text-gray-500 hover:text-red-500 hover:bg-gray-200"}`}
+                  className={`px-4 py-2 transition font-bold ${downActive ? "text-red-500 hover:bg-blue-200" : "text-blue-400 hover:text-red-500 hover:bg-blue-200"}`}
                   title={downActive ? "Remove downvote" : "Downvote"}
                 >
                   ▼
@@ -557,17 +557,17 @@ const PostDetail: React.FC = () => {
         {isEditOpen && (
           <form
             onSubmit={handleSubmitEdit}
-            className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm mb-8"
+            className="bg-white p-4 rounded-xl border border-blue-100 shadow-sm mb-8"
           >
             <h3 className="text-sm font-bold text-gray-800 mb-3">Edit Post</h3>
             <input
-              className="w-full p-2 mb-2 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-400"
+              className="w-full p-2 mb-2 bg-gray-50 border border-blue-100 rounded-lg outline-none focus:ring-2 focus:ring-blue-400"
               value={editTitle}
               onChange={(e) => setEditTitle(e.target.value)}
               placeholder="Title"
             />
             <textarea
-              className="w-full p-2 mb-2 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-400"
+              className="w-full p-2 mb-2 bg-gray-50 border border-blue-100 rounded-lg outline-none focus:ring-2 focus:ring-blue-400"
               rows={5}
               value={editBody}
               onChange={(e) => setEditBody(e.target.value)}
@@ -594,7 +594,7 @@ const PostDetail: React.FC = () => {
           {currentUser && (
             <form
               onSubmit={(e) => handlePostComment(e, null)}
-              className="mb-8 bg-white p-4 rounded-xl border border-gray-100 shadow-sm"
+              className="mb-8 bg-white p-4 rounded-xl border border-blue-100 shadow-sm"
             >
               <textarea
                 className="w-full p-3 bg-gray-50 border-none rounded-lg focus:ring-2 focus:ring-blue-500 outline-none resize-none h-20 transition"
@@ -628,7 +628,7 @@ const PostDetail: React.FC = () => {
 
               return (
                 <div key={comment.id}>
-                  <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-xs">
+                  <div className="bg-white p-4 rounded-xl border border-blue-100 shadow-xs">
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
                         <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center text-[10px] font-bold text-blue-600 uppercase">
@@ -670,7 +670,7 @@ const PostDetail: React.FC = () => {
                     {editingCommentId === comment.id ? (
                       <form onSubmit={submitEditComment} className="mb-3">
                         <textarea
-                          className="w-full p-2 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-400"
+                          className="w-full p-2 bg-gray-50 border border-blue-100 rounded-lg outline-none focus:ring-2 focus:ring-blue-400"
                           rows={3}
                           value={editingCommentBody}
                           onChange={(e) =>
@@ -697,7 +697,7 @@ const PostDetail: React.FC = () => {
                     )}
 
                     <div className="flex items-center gap-3">
-                      <div className="flex items-center bg-gray-50 rounded-lg border border-gray-100">
+                      <div className="flex items-center bg-blue-50 rounded-lg border border-blue-100">
                         <button
                           disabled={disabled}
                           onClick={() =>
@@ -705,14 +705,14 @@ const PostDetail: React.FC = () => {
                           }
                           className={`px-3 py-1.5 transition font-bold text-xs ${
                             cUpActive
-                              ? "text-blue-600 hover:bg-gray-200"
-                              : "text-gray-600 hover:text-blue-600 hover:bg-gray-200"
+                              ? "text-blue-600 hover:bg-blue-200"
+                              : "text-blue-400 hover:text-blue-700 hover:bg-blue-200"
                           } ${disabled ? "opacity-60 cursor-not-allowed" : ""}`}
                           title={cUpActive ? "Remove upvote" : "Upvote"}
                         >
                           ▲
                         </button>
-                        <span className="text-xs font-bold text-gray-700 px-2">
+                        <span className="text-xs font-bold text-blue-900 px-2">
                           {cVoteCount}
                         </span>
                         <button
@@ -722,8 +722,8 @@ const PostDetail: React.FC = () => {
                           }
                           className={`px-3 py-1.5 transition font-bold text-xs ${
                             cDownActive
-                              ? "text-red-500 hover:bg-gray-200"
-                              : "text-gray-600 hover:text-red-500 hover:bg-gray-200"
+                              ? "text-red-500 hover:bg-blue-200"
+                              : "text-blue-400 hover:text-red-500 hover:bg-blue-200"
                           } ${disabled ? "opacity-60 cursor-not-allowed" : ""}`}
                           title={cDownActive ? "Remove downvote" : "Downvote"}
                         >
@@ -748,7 +748,7 @@ const PostDetail: React.FC = () => {
                   {activeReplyId === comment.id && (
                     <form
                       onSubmit={(e) => handlePostComment(e, comment.id)}
-                      className="ml-10 mt-3 flex flex-col gap-2"
+                      className="ml-8 mt-3 flex flex-col gap-2"
                     >
                       <input
                         className="w-full p-2 bg-white border border-blue-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-400"
@@ -775,7 +775,7 @@ const PostDetail: React.FC = () => {
                     </form>
                   )}
 
-                  <div className="ml-10 mt-3 space-y-3 border-l-2 border-gray-100 pl-4">
+                  <div className="ml-8 mt-3 space-y-3 border-l-2 border-blue-100 pl-4">
                     {getReplies(comment.id).map((reply) => {
                       const replyAuthor =
                         reply.user?.username ||
@@ -794,7 +794,7 @@ const PostDetail: React.FC = () => {
                       return (
                         <div
                           key={reply.id}
-                          className="bg-gray-50 p-3 rounded-lg border border-gray-100"
+                          className="bg-blue-50 p-3 rounded-lg border border-blue-100"
                         >
                           <div className="flex items-center justify-between mb-2">
                             <div className="flex items-center gap-2">
@@ -802,7 +802,7 @@ const PostDetail: React.FC = () => {
                                 onClick={() =>
                                   navigate(`/profile/${replyAuthorUid}`)
                                 }
-                                className="font-bold text-xs text-gray-700 hover:text-blue-600 underline-offset-2 hover:underline"
+                                className="font-bold text-xs text-blue-700 hover:text-blue-600 underline-offset-2 hover:underline"
                                 title="View profile"
                               >
                                 @{replyAuthor}
@@ -834,7 +834,7 @@ const PostDetail: React.FC = () => {
                           {editingCommentId === reply.id ? (
                             <form onSubmit={submitEditComment} className="mb-3">
                               <textarea
-                                className="w-full p-2 bg-white border border-gray-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-400"
+                                className="w-full p-2 bg-white border border-blue-100 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-400"
                                 rows={3}
                                 value={editingCommentBody}
                                 onChange={(e) =>
@@ -860,18 +860,18 @@ const PostDetail: React.FC = () => {
                             </p>
                           )}
 
-                          <div className="flex items-center bg-gray-50 rounded-lg border border-gray-100 w-fit">
+                          <div className="flex items-center bg-blue-50 rounded-lg border border-blue-100 w-fit">
                             <button
                               disabled={rDisabled}
                               onClick={() =>
                                 handleVoteComment(reply.id, "upvote")
                               }
-                              className={`px-2 py-1.5 transition font-bold text-xs ${rUpActive ? "text-blue-600 hover:bg-gray-200" : "text-gray-600 hover:text-blue-600 hover:bg-gray-200"} ${rDisabled ? "opacity-60 cursor-not-allowed" : ""}`}
+                              className={`px-2 py-1.5 transition font-bold text-xs ${rUpActive ? "text-blue-600 hover:bg-blue-200" : "text-blue-400 hover:text-blue-700 hover:bg-blue-200"} ${rDisabled ? "opacity-60 cursor-not-allowed" : ""}`}
                               title={rUpActive ? "Remove upvote" : "Upvote"}
                             >
                               ▲
                             </button>
-                            <span className="text-xs font-bold text-gray-700 px-2">
+                            <span className="text-xs font-bold text-blue-900 px-2">
                               {rVoteCount}
                             </span>
                             <button
@@ -879,7 +879,7 @@ const PostDetail: React.FC = () => {
                               onClick={() =>
                                 handleVoteComment(reply.id, "downvote")
                               }
-                              className={`px-2 py-1.5 transition font-bold text-xs ${rDownActive ? "text-red-500 hover:bg-gray-200" : "text-gray-600 hover:text-red-500 hover:bg-gray-200"} ${rDisabled ? "opacity-60 cursor-not-allowed" : ""}`}
+                              className={`px-2 py-1.5 transition font-bold text-xs ${rDownActive ? "text-red-500 hover:bg-blue-200" : "text-blue-400 hover:text-red-500 hover:bg-blue-200"} ${rDisabled ? "opacity-60 cursor-not-allowed" : ""}`}
                               title={
                                 rDownActive ? "Remove downvote" : "Downvote"
                               }
@@ -902,3 +902,4 @@ const PostDetail: React.FC = () => {
 };
 
 export default PostDetail;
+

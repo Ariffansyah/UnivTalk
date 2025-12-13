@@ -78,7 +78,7 @@ const CreateForumPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 flex justify-center py-10 px-4">
+    <div className="min-h-screen bg-gray-100 flex justify-center py-8 px-2 sm:px-4">
       <div className="w-full max-w-2xl">
         <h1 className="text-2xl font-bold text-gray-900 mb-6 pb-4 border-b border-gray-300">
           Create a Forum
@@ -86,7 +86,7 @@ const CreateForumPage: React.FC = () => {
 
         <form
           onSubmit={handleSubmit}
-          className="bg-white p-6 rounded shadow space-y-6"
+          className="bg-white p-4 sm:p-6 rounded-2xl shadow space-y-6"
         >
           {error && (
             <div className="bg-red-50 text-red-600 p-3 rounded text-sm border border-red-200">
@@ -106,7 +106,7 @@ const CreateForumPage: React.FC = () => {
               value={name}
               onChange={(e) => setName(e.target.value)}
               maxLength={21}
-              className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none"
+              className="w-full px-3 py-2 border border-blue-100 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
               placeholder="Forum name"
             />
             <div className="text-xs text-gray-400 mt-1 text-right">
@@ -121,7 +121,7 @@ const CreateForumPage: React.FC = () => {
             <select
               value={categoryId || ""}
               onChange={(e) => setCategoryId(Number(e.target.value))}
-              className="w-full p-2 border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
+              className="w-full p-2 border border-blue-100 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
             >
               <option value="" disabled>
                 Select a Category
@@ -142,12 +142,12 @@ const CreateForumPage: React.FC = () => {
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={4}
-              className="w-full p-3 border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none"
+              className="w-full p-3 border border-blue-100 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
               placeholder="What is this forum about?"
             ></textarea>
           </div>
 
-          <div className="flex justify-end gap-3 pt-4">
+          <div className="flex flex-col sm:flex-row justify-end gap-2 sm:gap-3 pt-4">
             <button
               type="button"
               onClick={() => navigate(-1)}

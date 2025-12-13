@@ -1,5 +1,4 @@
-const API_URL =
-  import.meta.env.VITE_API_URL || "https://api.arpthef.my.id";
+const API_URL = import.meta.env.VITE_API_URL || "https://api.arpthef.my.id";
 
 export async function fetchUniversitySuggestions(
   name: string,
@@ -9,7 +8,7 @@ export async function fetchUniversitySuggestions(
   try {
     const base = String(API_URL).replace(/\/+$/, "");
     const res = await fetch(
-      `${base}/universities?name=${encodeURIComponent(name)}`
+      `${base}/universities?name=${encodeURIComponent(name)}`,
     );
 
     if (!res.ok) return [];
@@ -24,17 +23,11 @@ export async function fetchUniversitySuggestions(
     }
 
     return list.map((item) => {
-      if (
-        typeof item === "object" &&
-        item !== null &&
-        "name" in item
-      ) {
+      if (typeof item === "object" && item !== null && "name" in item) {
         return String(item.name);
       }
       return String(item);
     });
-  } catch {
-    console.error("Failed to fetch university suggestions", name);
   } catch (err) {
     console.error("Failed to fetch university suggestions:", err);
     return [];

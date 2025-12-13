@@ -37,7 +37,9 @@ const ForumDetail: React.FC = () => {
   const { showToast, showConfirm } = useAlert();
 
   const [forum, setForum] = useState<Forum | null>(null);
-  const [categories, setCategories] = useState<{ id: number; name: string }[]>([]);
+  const [categories, setCategories] = useState<{ id: number; name: string }[]>(
+    [],
+  );
   const [posts, setPosts] = useState<PostWithVote[]>([]);
   const [realMemberCount, setRealMemberCount] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -88,7 +90,8 @@ const ForumDetail: React.FC = () => {
         await fetchPosts();
         try {
           const catRes = await getCategories();
-          const cats = catRes && (catRes as any).data ? (catRes as any).data : [];
+          const cats =
+            catRes && (catRes as any).data ? (catRes as any).data : [];
           setCategories(cats);
         } catch {}
         try {
@@ -123,7 +126,9 @@ const ForumDetail: React.FC = () => {
 
   const hasAdminPower = user?.is_admin || myRole === "admin";
 
-  const categoryName = forum ? categories.find((c) => c.id === forum.category_id)?.name : undefined;
+  const categoryName = forum
+    ? categories.find((c) => c.id === forum.category_id)?.name
+    : undefined;
 
   const handleJoinLeave = async () => {
     if (!forumId || !user || joinLoading) return;
@@ -298,26 +303,25 @@ const ForumDetail: React.FC = () => {
   });
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="bg-linear-to-r from-blue-600 to-indigo-700 h-40 w-full shadow-inner"></div>
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 -mt-16">
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-8 relative">
+    <div className="min-h-screen bg-white">
+      <div className="max-w-5xl mx-auto px-3 sm:px-6 lg:px-8 py-10">
+        <div className="bg-white rounded-xl shadow-sm border border-blue-100 p-6 mb-8 relative">
           <div className="flex flex-col sm:flex-row items-start sm:items-end justify-between gap-4">
             <div className="flex items-end gap-5">
-              <div className="w-28 h-28 bg-white rounded-xl p-1 shadow-md">
-                <div className="w-full h-full bg-blue-50 rounded-lg flex items-center justify-center text-5xl font-bold text-blue-600">
+              <div className="w-20 h-20 sm:w-28 sm:h-28 bg-white rounded-xl p-1 shadow-md">
+                <div className="w-full h-full bg-blue-50 rounded-lg flex items-center justify-center text-3xl sm:text-5xl font-bold text-blue-600">
                   {forum.title.charAt(0).toUpperCase()}
                 </div>
               </div>
               <div className="mb-1">
-                <h1 className="text-3xl font-bold text-gray-900">
+                <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
                   {forum.title}
                 </h1>
                 <p className="text-gray-500 font-medium">Forum</p>
               </div>
             </div>
             {user && (
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-3">
                 {hasAdminPower ? (
                   <>
                     <div className="px-4 py-2 bg-yellow-50 text-yellow-700 font-bold rounded-lg border border-yellow-200 flex items-center gap-2 cursor-default">
@@ -326,13 +330,13 @@ const ForumDetail: React.FC = () => {
                     </div>
                     <button
                       onClick={handleOpenEditForum}
-                      className="px-6 py-2 bg-gray-900 text-white font-semibold rounded-lg hover:bg-gray-800 transition shadow-sm"
+                      className="px-4 sm:px-6 py-2 bg-gray-900 text-white font-semibold rounded-lg hover:bg-gray-800 transition shadow-sm"
                     >
                       Edit Forum
                     </button>
                     <button
                       onClick={handleDeleteForum}
-                      className="px-6 py-2 bg-red-600 text-white font-semibold rounded-lg hover:bg-red-700 transition shadow-sm"
+                      className="px-4 sm:px-6 py-2 bg-red-600 text-white font-semibold rounded-lg hover:bg-red-700 transition shadow-sm"
                     >
                       Delete Forum
                     </button>
@@ -341,7 +345,7 @@ const ForumDetail: React.FC = () => {
                   <button
                     onClick={handleJoinLeave}
                     disabled={joinLoading}
-                    className={`px-8 py-2.5 rounded-lg font-semibold transition shadow-sm ${
+                    className={`px-6 sm:px-8 py-2.5 rounded-lg font-semibold transition shadow-sm ${
                       isMember
                         ? "bg-white border-2 border-red-500 text-red-500 hover:bg-red-50"
                         : "bg-blue-600 text-white hover:bg-blue-700 hover:shadow-md"
@@ -349,7 +353,7 @@ const ForumDetail: React.FC = () => {
                   >
                     {joinLoading
                       ? "Processing..."
-                        : isMember
+                      : isMember
                         ? "Leave Forum"
                         : "Join Forum"}
                   </button>
@@ -357,8 +361,8 @@ const ForumDetail: React.FC = () => {
               </div>
             )}
           </div>
-          <div className="mt-6 pt-6 border-t border-gray-100 flex flex-col md:flex-row md:items-center gap-6">
-            <div className="flex items-center gap-6 text-sm text-gray-600">
+          <div className="mt-6 pt-6 border-t border-blue-100 flex flex-col md:flex-row md:items-center gap-6">
+            <div className="flex items-center gap-6 text-sm text-gray-600 flex-wrap">
               <div className="flex flex-col">
                 <span className="font-bold text-gray-900 text-lg">
                   {realMemberCount}
@@ -385,13 +389,13 @@ const ForumDetail: React.FC = () => {
               </div>
               {categoryName && (
                 <div className="flex flex-col">
-                  <span className="text-xs font-bold text-gray-600 bg-gray-100 px-3 py-1 rounded-full">
+                  <span className="text-xs font-bold text-blue-700 bg-blue-50 px-3 py-1 rounded-full border border-blue-100">
                     {categoryName}
                   </span>
                 </div>
               )}
             </div>
-            <p className="text-gray-600 flex-1 md:text-right italic">
+            <p className="text-gray-600 flex-1 md:text-right italic min-w-0 warp-break-words">
               "{forum.description}"
             </p>
           </div>
@@ -400,17 +404,17 @@ const ForumDetail: React.FC = () => {
         {isEditOpen && (
           <form
             onSubmit={handleSubmitEditForum}
-            className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm mb-8"
+            className="bg-white p-6 rounded-xl border border-blue-100 shadow-sm mb-8"
           >
             <h3 className="text-sm font-bold text-gray-800 mb-3">Edit Forum</h3>
             <input
-              className="w-full p-2 mb-2 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-400"
+              className="w-full p-2 mb-2 bg-gray-50 border border-blue-100 rounded-lg outline-none focus:ring-2 focus:ring-blue-400"
               value={editTitle}
               onChange={(e) => setEditTitle(e.target.value)}
               placeholder="Title"
             />
             <textarea
-              className="w-full p-2 mb-2 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-400"
+              className="w-full p-2 mb-2 bg-gray-50 border border-blue-100 rounded-lg outline-none focus:ring-2 focus:ring-blue-400"
               rows={4}
               value={editDescription}
               onChange={(e) => setEditDescription(e.target.value)}
@@ -434,7 +438,7 @@ const ForumDetail: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 pb-10">
           <div className="md:col-span-2 space-y-6">
             {sortedPosts.length === 0 ? (
-              <div className="bg-white p-12 rounded-xl border border-gray-100 shadow-sm text-center">
+              <div className="bg-white p-12 rounded-xl border border-blue-100 shadow-sm text-center">
                 <div className="text-6xl mb-4">📝</div>
                 <h3 className="text-xl font-bold text-gray-800 mb-2">
                   No posts yet
@@ -455,10 +459,10 @@ const ForumDetail: React.FC = () => {
                 return (
                   <div
                     key={post.id}
-                    className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition"
+                    className="bg-white p-6 rounded-xl border border-blue-100 shadow-sm hover:shadow-lg hover:border-blue-300 hover:bg-blue-50 transition"
                   >
                     <div className="flex items-center gap-2 mb-3">
-                      <div className="w-6 h-6 rounded-full bg-linear-to-r from-purple-400 to-pink-400 flex items-center justify-center text-[10px] text-white font-bold uppercase">
+                      <div className="w-6 h-6 rounded-full bg-blue-200 flex items-center justify-center text-[10px] text-blue-700 font-bold uppercase">
                         {authorUsername.charAt(0)}
                       </div>
                       <span
@@ -479,7 +483,7 @@ const ForumDetail: React.FC = () => {
                       {post.body}
                     </p>
                     {post.media_url && (
-                      <div className="mb-4 rounded-lg overflow-hidden border border-gray-100 bg-black">
+                      <div className="mb-4 rounded-lg overflow-hidden border border-blue-100 bg-black">
                         {isVideo(post.media_type) ? (
                           <video
                             src={getMediaUrl(post.media_url)}
@@ -495,32 +499,32 @@ const ForumDetail: React.FC = () => {
                         )}
                       </div>
                     )}
-                    <div className="flex items-center gap-4">
-                      <div className="flex items-center bg-gray-50 rounded-lg border border-gray-100 overflow-hidden">
+                    <div className="flex flex-wrap items-center gap-4">
+                      <div className="flex items-center bg-blue-50 rounded-lg border border-blue-100 overflow-hidden">
                         <button
                           onClick={() =>
                             handleVote(post.id as number, "upvote")
                           }
-                          className={`px-3 py-1.5 hover:bg-gray-200 transition font-bold ${upActive ? "text-blue-600" : "text-gray-500 hover:text-blue-600"}`}
+                          className={`px-3 py-1.5 hover:bg-blue-200 transition font-bold ${upActive ? "text-blue-600" : "text-blue-400 hover:text-blue-700"}`}
                           title={upActive ? "Remove upvote" : "Upvote"}
                         >
                           ▲
                         </button>
-                        <span className="text-sm font-bold text-gray-700 px-1">
+                        <span className="text-sm font-bold text-blue-900 px-1">
                           {voteCount}
                         </span>
                         <button
                           onClick={() =>
                             handleVote(post.id as number, "downvote")
                           }
-                          className={`px-3 py-1.5 hover:bg-gray-200 transition font-bold ${downActive ? "text-red-500" : "text-gray-500 hover:text-red-500"}`}
+                          className={`px-3 py-1.5 hover:bg-blue-200 transition font-bold ${downActive ? "text-red-500" : "text-blue-400 hover:text-red-500"}`}
                           title={downActive ? "Remove downvote" : "Downvote"}
                         >
                           ▼
                         </button>
                       </div>
                       <button
-                        className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-500 hover:bg-gray-50 rounded-lg transition"
+                        className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-50 rounded-lg transition"
                         onClick={() => navigate(`/posts/${post.id}`)}
                       >
                         <span>💬</span> <span>Comment</span>
@@ -532,11 +536,11 @@ const ForumDetail: React.FC = () => {
             )}
           </div>
           <div className="hidden md:block">
-            <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm sticky top-6">
+            <div className="bg-white p-6 rounded-xl border border-blue-100 shadow-sm sticky top-6">
               {user && (
                 <button
                   onClick={() => setIsModalOpen(true)}
-                  className="block w-full text-center bg-gray-900 text-white font-bold py-3 rounded-xl hover:bg-gray-800 transition shadow-lg shadow-gray-200"
+                  className="block w-full text-center bg-blue-600 text-white font-bold py-3 rounded-xl hover:bg-blue-700 transition shadow"
                 >
                   + New Post
                 </button>
@@ -558,3 +562,4 @@ const ForumDetail: React.FC = () => {
 };
 
 export default ForumDetail;
+

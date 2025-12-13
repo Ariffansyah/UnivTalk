@@ -13,18 +13,6 @@ const Footer: React.FC = () => {
               © {new Date().getFullYear()} UnivTalk. All rights reserved.
             </span>
           </div>
-
-          <div className="flex gap-6 text-sm text-gray-500">
-            <a href="#" className="hover:text-blue-600 transition">
-              Privacy Policy
-            </a>
-            <a href="#" className="hover:text-blue-600 transition">
-              Terms of Service
-            </a>
-            <a href="#" className="hover:text-blue-600 transition">
-              Contact
-            </a>
-          </div>
         </div>
       </div>
     </footer>

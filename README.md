@@ -21,18 +21,15 @@ Setup `.env` file based on the provided `.envExample` file.
 Before running the application, please setup your PostgreSQL database with the following schema:
 
 ```sql
--- 1. Create enum for user status
 CREATE TYPE user_status AS ENUM ('active', 'inactive');
 
--- 2. Categories table
-CREATE TABLE categories (
+CREATE TABLE IF NOT EXISTS categories (
     id SERIAL PRIMARY KEY,
     name VARCHAR(100) UNIQUE NOT NULL,
     description TEXT
 );
 
--- 3. Users table (keeping as original - backend generates UID)
-CREATE TABLE users (
+CREATE TABLE IF NOT EXISTS users (
     id SERIAL PRIMARY KEY,
     uid UUID NOT NULL UNIQUE,
     username VARCHAR(32) NOT NULL UNIQUE,
@@ -48,8 +45,7 @@ CREATE TABLE users (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- 4. Forums table
-CREATE TABLE forums (
+CREATE TABLE IF NOT EXISTS forums (
     id SERIAL PRIMARY KEY,
     fid UUID NOT NULL UNIQUE,
     title VARCHAR(100) NOT NULL UNIQUE,
@@ -59,8 +55,7 @@ CREATE TABLE forums (
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
--- 5. Forum members table (role: 'admin' or 'member')
-CREATE TABLE forum_members (
+CREATE TABLE IF NOT EXISTS forum_members (
     user_id UUID NOT NULL REFERENCES users(uid) ON DELETE CASCADE,
     forum_id UUID NOT NULL REFERENCES forums(fid) ON DELETE CASCADE,
     role VARCHAR(10) NOT NULL CHECK (role IN ('admin', 'member')),
@@ -68,8 +63,7 @@ CREATE TABLE forum_members (
     PRIMARY KEY (user_id, forum_id)
 );
 
--- 6. Posts table
-CREATE TABLE posts (
+CREATE TABLE IF NOT EXISTS posts (
     id SERIAL PRIMARY KEY,
     forum_id UUID NOT NULL REFERENCES forums(fid) ON DELETE CASCADE,
     user_id UUID REFERENCES users(uid) ON DELETE SET NULL,
@@ -81,8 +75,7 @@ CREATE TABLE posts (
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
--- 7. Comments table (1-level deep via parent_comment_id)
-CREATE TABLE comments (
+CREATE TABLE IF NOT EXISTS comments (
     id SERIAL PRIMARY KEY,
     post_id INTEGER NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
     user_id UUID REFERENCES users(uid) ON DELETE SET NULL,
@@ -91,8 +84,7 @@ CREATE TABLE comments (
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
--- 8. Votes table (for posts or comments, only one of post_id or comment_id populated per row)
-CREATE TABLE votes (
+CREATE TABLE IF NOT EXISTS votes (
     id SERIAL PRIMARY KEY,
     user_id UUID NOT NULL REFERENCES users(uid) ON DELETE CASCADE,
     post_id INTEGER REFERENCES posts(id) ON DELETE CASCADE,
@@ -100,10 +92,23 @@ CREATE TABLE votes (
     value SMALLINT NOT NULL CHECK (value IN (1, -1)),
     CONSTRAINT one_vote_per_user_on_target UNIQUE (user_id, post_id, comment_id),
     CHECK (
-        (post_id IS NOT NULL AND comment_id IS NULL) OR 
+        (post_id IS NOT NULL AND comment_id IS NULL) OR
         (post_id IS NULL AND comment_id IS NOT NULL)
     )
 );
+
+INSERT INTO categories (name, description)
+VALUES
+    ('General Discussion', 'Ruang diskusi umum untuk topik apa saja seputar kehidupan universitas (mirip r/AskReddit).'),
+    ('Computer Science & IT', 'Diskusi mengenai pemrograman, jaringan, AI, dan teknologi (mirip r/programming).'),
+    ('Engineering', 'Komunitas untuk mahasiswa teknik sipil, mesin, elektro, dan arsitektur.'),
+    ('Economics & Business', 'Diskusi seputar manajemen, akuntansi, saham, dan bisnis.'),
+    ('Arts & Humanities', 'Ruang untuk seni, sastra, psikologi, dan ilmu sosial.'),
+    ('Campus Life & Events', 'Informasi event kampus, UKM, rekomendasi kantin, atau info kosan.'),
+    ('Career & Internships', 'Info lowongan magang, tips CV, dan persiapan karir setelah lulus.'),
+    ('Thesis & Research', 'Tempat berkeluh kesah dan berbagi tips seputar Skripsi/Tesis (mirip r/GradSchool).'),
+    ('Admissions & New Students', 'Panduan dan tanya jawab untuk mahasiswa baru (Maba).')
+ON CONFLICT (name) DO NOTHING;
 ```
 
 ## Frontend Setup
