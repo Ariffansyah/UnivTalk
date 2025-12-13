@@ -153,6 +153,11 @@ const SignUpPage: React.FC = () => {
       >
         <div className="text-center mb-8">
           <img src={logo} alt="UnivTalk Logo" className="w-32 mx-auto mb-4" />
+          <img
+            src={logo}
+            alt="UnivTalk Logo"
+            className="w-32 mx-auto"
+          />
           <h2 className="text-2xl font-semibold text-gray-700">Create Account</h2>
           <p className="text-gray-500 text-sm mt-1">Join our university community</p>
         </div>

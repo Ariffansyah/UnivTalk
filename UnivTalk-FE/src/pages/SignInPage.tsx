@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { signIn, getUserProfile } from "../services/api/auth.ts";
 import { useAuth } from "../context/AuthContext";
+import { signIn } from "../services/api/auth.ts";
 import logo from "../assets/LogoUnivTalk.png";
 
 <img src={logo} />
@@ -74,6 +75,14 @@ const SignInPage: React.FC = () => {
             <img src={logo} alt="UnivTalk Logo" className="w-32 mx-auto" />
           <h2 className="text-2xl font-semibold text-gray-700">Sign In</h2>
           <p className="text-gray-500 text-sm mt-1">Welcome back to our community</p>
+          <div className="text-center mb-8">
+          <img
+            src={logo}
+            alt="UnivTalk Logo"
+            className="w-32 mx-auto"
+          />
+          <h2 className="text-2xl font-semibold text-gray-700">Create Account</h2>
+          <p className="text-gray-500 text-sm mt-1">Join our university community</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
