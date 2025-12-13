@@ -17,14 +17,22 @@ import {
 
 type PostWithVote = Post & { my_vote?: number | null };
 
+type SortOption = "newest" | "day" | "week" | "month" | "alltime";
+
+const POSTS_PER_PAGE = 10;
+
 const LandingPage: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [forums, setForums] = useState<Forum[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [posts, setPosts] = useState<PostWithVote[]>([]);
+  const [filteredPosts, setFilteredPosts] = useState<PostWithVote[]>([]);
+  const [displayedPosts, setDisplayedPosts] = useState<PostWithVote[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [sortBy, setSortBy] = useState<SortOption>("newest");
+  const [visibleCount, setVisibleCount] = useState(POSTS_PER_PAGE);
 
   const formatDate = (dateString?: string) => {
     if (!dateString) return "";
@@ -67,20 +75,12 @@ const LandingPage: React.FC = () => {
           return { ...p, upvotes, downvotes, my_vote: myVote } as PostWithVote;
         }),
       );
-      enriched.sort((a, b) => {
-        const sa = (a.upvotes || 0) - (a.downvotes || 0);
-        const sb = (b.upvotes || 0) - (b.downvotes || 0);
-        if (sb !== sa) return sb - sa;
-        return (
-          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-        );
-      });
       setPosts(enriched);
     } catch (err: any) {
       setError(
         err?.message
           ? `Failed to load posts: ${err.message}`
-          : "Failed to load posts. Please reload this page.",
+          : "Failed to load posts.  Please reload this page.",
       );
     }
   };
@@ -104,7 +104,7 @@ const LandingPage: React.FC = () => {
       } catch (err: any) {
         setError(
           err?.message
-            ? `Failed to load: ${err.message}`
+            ? `Failed to load:  ${err.message}`
             : "Failed to load data. Please reload this page.",
         );
       } finally {
@@ -113,6 +113,78 @@ const LandingPage: React.FC = () => {
     };
     fetchData();
   }, [user]);
+
+  useEffect(() => {
+    let sorted = [...posts];
+    const now = new Date();
+
+    if (sortBy === "newest") {
+      sorted.sort((a, b) => {
+        return (
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        );
+      });
+    } else if (sortBy === "day") {
+      const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+      sorted = sorted.filter(
+        (p) => new Date(p.created_at).getTime() >= oneDayAgo.getTime(),
+      );
+      sorted.sort((a, b) => {
+        const sa = (a.upvotes || 0) - (a.downvotes || 0);
+        const sb = (b.upvotes || 0) - (b.downvotes || 0);
+        if (sb !== sa) return sb - sa;
+        return (
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        );
+      });
+    } else if (sortBy === "week") {
+      const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      sorted = sorted.filter(
+        (p) => new Date(p.created_at).getTime() >= oneWeekAgo.getTime(),
+      );
+      sorted.sort((a, b) => {
+        const sa = (a.upvotes || 0) - (a.downvotes || 0);
+        const sb = (b.upvotes || 0) - (b.downvotes || 0);
+        if (sb !== sa) return sb - sa;
+        return (
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        );
+      });
+    } else if (sortBy === "month") {
+      const oneMonthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      sorted = sorted.filter(
+        (p) => new Date(p.created_at).getTime() >= oneMonthAgo.getTime(),
+      );
+      sorted.sort((a, b) => {
+        const sa = (a.upvotes || 0) - (a.downvotes || 0);
+        const sb = (b.upvotes || 0) - (b.downvotes || 0);
+        if (sb !== sa) return sb - sa;
+        return (
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        );
+      });
+    } else if (sortBy === "alltime") {
+      sorted.sort((a, b) => {
+        const sa = (a.upvotes || 0) - (a.downvotes || 0);
+        const sb = (b.upvotes || 0) - (b.downvotes || 0);
+        if (sb !== sa) return sb - sa;
+        return (
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        );
+      });
+    }
+
+    setFilteredPosts(sorted);
+    setVisibleCount(POSTS_PER_PAGE);
+  }, [posts, sortBy]);
+
+  useEffect(() => {
+    setDisplayedPosts(filteredPosts.slice(0, visibleCount));
+  }, [filteredPosts, visibleCount]);
+
+  const handleLoadMore = () => {
+    setVisibleCount((prev) => prev + POSTS_PER_PAGE);
+  };
 
   const handleVote = async (postId: number, type: "upvote" | "downvote") => {
     if (!user) {
@@ -126,58 +198,49 @@ const LandingPage: React.FC = () => {
     else if (type === "downvote" && currentVote === -1) action = "remove";
 
     setPosts((prev) =>
-      prev
-        .map((p) => {
-          if (p.id !== postId) return p;
-          if (action === "remove") {
-            if (currentVote === 1) {
-              return {
-                ...p,
-                upvotes: Math.max(0, (p.upvotes || 0) - 1),
-                my_vote: null,
-              };
-            }
-            if (currentVote === -1) {
-              return {
-                ...p,
-                downvotes: Math.max(0, (p.downvotes || 0) - 1),
-                my_vote: null,
-              };
-            }
-            return p;
+      prev.map((p) => {
+        if (p.id !== postId) return p;
+        if (action === "remove") {
+          if (currentVote === 1) {
+            return {
+              ...p,
+              upvotes: Math.max(0, (p.upvotes || 0) - 1),
+              my_vote: null,
+            };
           }
-          if (action === "upvote") {
-            if (currentVote === -1) {
-              return {
-                ...p,
-                upvotes: (p.upvotes || 0) + 1,
-                downvotes: Math.max(0, (p.downvotes || 0) - 1),
-                my_vote: 1,
-              };
-            }
-            return { ...p, upvotes: (p.upvotes || 0) + 1, my_vote: 1 };
-          }
-          if (action === "downvote") {
-            if (currentVote === 1) {
-              return {
-                ...p,
-                downvotes: (p.downvotes || 0) + 1,
-                upvotes: Math.max(0, (p.upvotes || 0) - 1),
-                my_vote: -1,
-              };
-            }
-            return { ...p, downvotes: (p.downvotes || 0) + 1, my_vote: -1 };
+          if (currentVote === -1) {
+            return {
+              ...p,
+              downvotes: Math.max(0, (p.downvotes || 0) - 1),
+              my_vote: null,
+            };
           }
           return p;
-        })
-        .sort((a, b) => {
-          const sa = (a.upvotes || 0) - (a.downvotes || 0);
-          const sb = (b.upvotes || 0) - (b.downvotes || 0);
-          if (sb !== sa) return sb - sa;
-          return (
-            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-          );
-        }),
+        }
+        if (action === "upvote") {
+          if (currentVote === -1) {
+            return {
+              ...p,
+              upvotes: (p.upvotes || 0) + 1,
+              downvotes: Math.max(0, (p.downvotes || 0) - 1),
+              my_vote: 1,
+            };
+          }
+          return { ...p, upvotes: (p.upvotes || 0) + 1, my_vote: 1 };
+        }
+        if (action === "downvote") {
+          if (currentVote === 1) {
+            return {
+              ...p,
+              downvotes: (p.downvotes || 0) + 1,
+              upvotes: Math.max(0, (p.upvotes || 0) - 1),
+              my_vote: -1,
+            };
+          }
+          return { ...p, downvotes: (p.downvotes || 0) + 1, my_vote: -1 };
+        }
+        return p;
+      }),
     );
 
     try {
@@ -253,10 +316,38 @@ const LandingPage: React.FC = () => {
             </div>
           </aside>
           <main className="lg:col-span-6 space-y-4 order-1 lg:order-2">
-            <div className="flex items-center gap-2 mb-4 px-1">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4 px-1">
               <h2 className="text-xl font-bold text-blue-800 tracking-tight">
-                Newest Discussions
+                Discussions
               </h2>
+              <div className="relative">
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value as SortOption)}
+                  className="px-4 py-2 pr-10 bg-blue-50 text-blue-700 font-bold text-sm rounded-lg border border-blue-200 hover:bg-blue-100 transition cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none"
+                >
+                  <option value="newest">Newest</option>
+                  <option value="day">Top Today</option>
+                  <option value="week">Top This Week</option>
+                  <option value="month">Top This Month</option>
+                  <option value="alltime">All-Time Top</option>
+                </select>
+                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-blue-700">
+                  <svg
+                    className="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M19 9l-7 7-7-7"
+                    />
+                  </svg>
+                </div>
+              </div>
             </div>
             {loading ? (
               <div className="space-y-4">
@@ -267,134 +358,146 @@ const LandingPage: React.FC = () => {
                   ></div>
                 ))}
               </div>
-            ) : posts.length === 0 ? (
+            ) : displayedPosts.length === 0 ? (
               <div className="bg-white p-10 rounded-xl border-2 border-yellow-100 text-center shadow">
                 <div className="text-4xl mb-2">🚀</div>
                 <p className="text-gray-500 font-medium">
-                  No posts yet. Start the first conversation!
+                  No posts found for this filter. Try a different option!
                 </p>
               </div>
             ) : (
-              posts.map((post) => {
-                const authorUsername =
-                  (post as any).user?.username || "Anonymous";
-                const voteCount = (post.upvotes || 0) - (post.downvotes || 0);
-                const upActive = post.my_vote === 1;
-                const downActive = post.my_vote === -1;
-                const forumMeta = forums.find((f) => f.fid === post.forum_id);
+              <>
+                {displayedPosts.map((post) => {
+                  const authorUsername =
+                    (post as any).user?.username || "Anonymous";
+                  const voteCount = (post.upvotes || 0) - (post.downvotes || 0);
+                  const upActive = post.my_vote === 1;
+                  const downActive = post.my_vote === -1;
+                  const forumMeta = forums.find((f) => f.fid === post.forum_id);
 
-                return (
-                  <div
-                    key={post.id}
-                    onClick={() => navigate(`/posts/${post.id}`)}
-                    className="bg-white p-6 rounded-xl border border-blue-100 shadow hover:shadow-lg hover:border-blue-300 hover:bg-blue-50 transition cursor-pointer group relative"
-                  >
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2 text-[12px] text-blue-700 font-semibold">
-                        <div
-                          className="w-6 h-6 rounded-full bg-blue-200 flex items-center justify-center font-bold text-blue-600 uppercase border border-blue-100 select-none"
-                          style={{ userSelect: "none" }}
-                        >
-                          {authorUsername.charAt(0)}
+                  return (
+                    <div
+                      key={post.id}
+                      onClick={() => navigate(`/posts/${post.id}`)}
+                      className="bg-white p-6 rounded-xl border border-blue-100 shadow hover:shadow-lg hover:border-blue-300 hover:bg-blue-50 transition cursor-pointer group relative"
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2 text-[12px] text-blue-700 font-semibold">
+                          <div
+                            className="w-6 h-6 rounded-full bg-blue-200 flex items-center justify-center font-bold text-blue-600 uppercase border border-blue-100 select-none"
+                            style={{ userSelect: "none" }}
+                          >
+                            {authorUsername.charAt(0)}
+                          </div>
+                          <button
+                            type="button"
+                            tabIndex={0}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate(`/profile/${post.user_id}`);
+                            }}
+                            className="hover:underline underline-offset-2 cursor-pointer"
+                            title="View profile"
+                          >
+                            @{authorUsername}
+                          </button>
+                          <span className="text-blue-400 font-normal">•</span>
+                          <span className="font-medium text-gray-400">
+                            {formatDate(post.created_at)}
+                          </span>
                         </div>
                         <button
                           type="button"
                           tabIndex={0}
                           onClick={(e) => {
                             e.stopPropagation();
-                            navigate(`/profile/${post.user_id}`);
+                            navigate(`/forums/${post.forum_id}`);
                           }}
-                          className="hover:underline underline-offset-2 cursor-pointer"
-                          title="View profile"
+                          className="px-2 py-1.5 text-[11px] font-bold rounded bg-yellow-100 text-yellow-800 border border-yellow-200 hover:bg-yellow-200 transition cursor-pointer"
+                          title="View forum"
                         >
-                          @{authorUsername}
+                          {forumMeta?.title ?? "Forum"}
                         </button>
-                        <span className="text-blue-400 font-normal">•</span>
-                        <span className="font-medium text-gray-400">
-                          {formatDate(post.created_at)}
-                        </span>
                       </div>
-                      <button
-                        type="button"
-                        tabIndex={0}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          navigate(`/forums/${post.forum_id}`);
-                        }}
-                        className="px-2 py-1.5 text-[11px] font-bold rounded bg-yellow-100 text-yellow-800 border border-yellow-200 hover:bg-yellow-200 transition cursor-pointer"
-                        title="View forum"
-                      >
-                        {forumMeta?.title ?? "Forum"}
-                      </button>
-                    </div>
-                    <h3 className="text-base font-bold text-blue-900 group-hover:text-blue-700 transition mb-1">
-                      {post.title}
-                    </h3>
-                    <p className="text-sm text-gray-700 line-clamp-3 mb-3 leading-relaxed whitespace-pre-wrap">
-                      {post.body}
-                    </p>
-                    {post.media_url && (
-                      <div className="mb-3 rounded-lg overflow-hidden bg-black border border-blue-100">
-                        {isVideo(post.media_type) ? (
-                          <video
-                            src={getMediaUrl(post.media_url)}
-                            controls
-                            playsInline
-                            preload="metadata"
-                            className="w-full max-h-52 rounded"
-                          />
-                        ) : (
-                          <img
-                            src={getMediaUrl(post.media_url)}
-                            alt={post.title}
-                            loading="lazy"
-                            className="w-full max-h-52 object-contain"
-                          />
-                        )}
-                      </div>
-                    )}
-                    <div className="flex flex-wrap items-center gap-4 border-t pt-2 border-blue-50">
-                      <div className="flex items-center bg-blue-50 rounded-lg border border-blue-100 overflow-hidden">
+                      <h3 className="text-base font-bold text-blue-900 group-hover:text-blue-700 transition mb-1">
+                        {post.title}
+                      </h3>
+                      <p className="text-sm text-gray-700 line-clamp-3 mb-3 leading-relaxed whitespace-pre-wrap">
+                        {post.body}
+                      </p>
+                      {post.media_url && (
+                        <div className="mb-3 rounded-lg overflow-hidden bg-black border border-blue-100">
+                          {isVideo(post.media_type) ? (
+                            <video
+                              src={getMediaUrl(post.media_url)}
+                              controls
+                              playsInline
+                              preload="metadata"
+                              className="w-full max-h-52 rounded"
+                            />
+                          ) : (
+                            <img
+                              src={getMediaUrl(post.media_url)}
+                              alt={post.title}
+                              loading="lazy"
+                              className="w-full max-h-52 object-contain"
+                            />
+                          )}
+                        </div>
+                      )}
+                      <div className="flex flex-wrap items-center gap-4 border-t pt-2 border-blue-50">
+                        <div className="flex items-center bg-blue-50 rounded-lg border border-blue-100 overflow-hidden">
+                          <button
+                            type="button"
+                            tabIndex={0}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleVote(post.id as number, "upvote");
+                            }}
+                            className={`px-3 py-1.5 hover:bg-blue-200 transition font-bold cursor-pointer ${upActive ? "text-blue-600" : "text-blue-400 hover:text-blue-700"}`}
+                            title={upActive ? "Remove upvote" : "Upvote"}
+                          >
+                            ▲
+                          </button>
+                          <span className="text-sm font-bold text-blue-900 px-1 select-none">
+                            {voteCount}
+                          </span>
+                          <button
+                            type="button"
+                            tabIndex={0}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleVote(post.id as number, "downvote");
+                            }}
+                            className={`px-3 py-1.5 hover:bg-blue-200 transition font-bold cursor-pointer ${downActive ? "text-red-500" : "text-blue-400 hover:text-red-500"}`}
+                            title={downActive ? "Remove downvote" : "Downvote"}
+                          >
+                            ▼
+                          </button>
+                        </div>
                         <button
                           type="button"
                           tabIndex={0}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleVote(post.id as number, "upvote");
-                          }}
-                          className={`px-3 py-1.5 hover:bg-blue-200 transition font-bold cursor-pointer ${upActive ? "text-blue-600" : "text-blue-400 hover:text-blue-700"}`}
-                          title={upActive ? "Remove upvote" : "Upvote"}
+                          className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-50 rounded-lg transition cursor-pointer"
+                          onClick={() => navigate(`/posts/${post.id}`)}
                         >
-                          ▲
-                        </button>
-                        <span className="text-sm font-bold text-blue-900 px-1 select-none">
-                          {voteCount}
-                        </span>
-                        <button
-                          type="button"
-                          tabIndex={0}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleVote(post.id as number, "downvote");
-                          }}
-                          className={`px-3 py-1.5 hover:bg-blue-200 transition font-bold cursor-pointer ${downActive ? "text-red-500" : "text-blue-400 hover:text-red-500"}`}
-                          title={downActive ? "Remove downvote" : "Downvote"}
-                        >
-                          ▼
+                          <span>💬</span> <span>Comment</span>
                         </button>
                       </div>
-                      <button
-                        type="button"
-                        tabIndex={0}
-                        className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-50 rounded-lg transition cursor-pointer"
-                        onClick={() => navigate(`/posts/${post.id}`)}
-                      >
-                        <span>💬</span> <span>Comment</span>
-                      </button>
                     </div>
+                  );
+                })}
+                {visibleCount < filteredPosts.length && (
+                  <div className="text-center pt-6">
+                    <button
+                      onClick={handleLoadMore}
+                      className="px-6 py-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition shadow cursor-pointer"
+                    >
+                      Load More
+                    </button>
                   </div>
-                );
-              })
+                )}
+              </>
             )}
           </main>
           <aside className="lg:col-span-3 space-y-6 order-3">
@@ -461,7 +564,7 @@ const LandingPage: React.FC = () => {
                 </h3>
                 <ul className="text-[13px] space-y-3 text-gray-600">
                   <li className="flex items-start gap-2">
-                    <span className="text-green-500 font-bold">1.</span>
+                    <span className="text-green-500 font-bold">1. </span>
                     Be respectful to fellow students.
                   </li>
                   <li className="flex items-start gap-2">
@@ -487,7 +590,7 @@ const LandingPage: React.FC = () => {
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   strokeWidth="2"
-                  d="M8 15s1.5-2 4-2 4 2 4 2M12 13v.01"
+                  d="M8 15s1.5-2 4-2 4 2 4 2M12 13v. 01"
                 />
               </svg>
               Your university community is more fun when you contribute.{" "}
