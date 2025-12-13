@@ -29,6 +29,9 @@ const getYear = (dateString?: string) => {
 };
 
 type PostWithVote = Post & { my_vote?: number | null };
+type SortOption = "newest" | "day" | "week" | "month" | "alltime";
+
+const POSTS_PER_PAGE = 10;
 
 const ForumDetail: React.FC = () => {
   const { forumId } = useParams<{ forumId: string }>();
@@ -41,6 +44,8 @@ const ForumDetail: React.FC = () => {
     [],
   );
   const [posts, setPosts] = useState<PostWithVote[]>([]);
+  const [filteredPosts, setFilteredPosts] = useState<PostWithVote[]>([]);
+  const [displayedPosts, setDisplayedPosts] = useState<PostWithVote[]>([]);
   const [realMemberCount, setRealMemberCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -48,6 +53,8 @@ const ForumDetail: React.FC = () => {
   const [myRole, setMyRole] = useState<string | null>(null);
   const [joinLoading, setJoinLoading] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [sortBy, setSortBy] = useState<SortOption>("newest");
+  const [visibleCount, setVisibleCount] = useState(POSTS_PER_PAGE);
 
   const fetchPosts = async () => {
     if (!forumId) return;
@@ -63,7 +70,7 @@ const ForumDetail: React.FC = () => {
       }));
       setPosts(mapped);
     } catch (err: any) {
-      setError("Failed to fetch posts: " + (err.message || "Unknown error"));
+      setError("Failed to fetch posts:  " + (err.message || "Unknown error"));
       showToast("Failed to fetch posts", "error");
     }
   };
@@ -124,6 +131,78 @@ const ForumDetail: React.FC = () => {
     fetchData();
   }, [forumId, user]);
 
+  useEffect(() => {
+    let sorted = [...posts];
+    const now = new Date();
+
+    if (sortBy === "newest") {
+      sorted.sort((a, b) => {
+        return (
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        );
+      });
+    } else if (sortBy === "day") {
+      const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+      sorted = sorted.filter(
+        (p) => new Date(p.created_at).getTime() >= oneDayAgo.getTime(),
+      );
+      sorted.sort((a, b) => {
+        const sa = (a.upvotes || 0) - (a.downvotes || 0);
+        const sb = (b.upvotes || 0) - (b.downvotes || 0);
+        if (sb !== sa) return sb - sa;
+        return (
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        );
+      });
+    } else if (sortBy === "week") {
+      const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      sorted = sorted.filter(
+        (p) => new Date(p.created_at).getTime() >= oneWeekAgo.getTime(),
+      );
+      sorted.sort((a, b) => {
+        const sa = (a.upvotes || 0) - (a.downvotes || 0);
+        const sb = (b.upvotes || 0) - (b.downvotes || 0);
+        if (sb !== sa) return sb - sa;
+        return (
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        );
+      });
+    } else if (sortBy === "month") {
+      const oneMonthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      sorted = sorted.filter(
+        (p) => new Date(p.created_at).getTime() >= oneMonthAgo.getTime(),
+      );
+      sorted.sort((a, b) => {
+        const sa = (a.upvotes || 0) - (a.downvotes || 0);
+        const sb = (b.upvotes || 0) - (b.downvotes || 0);
+        if (sb !== sa) return sb - sa;
+        return (
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        );
+      });
+    } else if (sortBy === "alltime") {
+      sorted.sort((a, b) => {
+        const sa = (a.upvotes || 0) - (a.downvotes || 0);
+        const sb = (b.upvotes || 0) - (b.downvotes || 0);
+        if (sb !== sa) return sb - sa;
+        return (
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        );
+      });
+    }
+
+    setFilteredPosts(sorted);
+    setVisibleCount(POSTS_PER_PAGE);
+  }, [posts, sortBy]);
+
+  useEffect(() => {
+    setDisplayedPosts(filteredPosts.slice(0, visibleCount));
+  }, [filteredPosts, visibleCount]);
+
+  const handleLoadMore = () => {
+    setVisibleCount((prev) => prev + POSTS_PER_PAGE);
+  };
+
   const hasAdminPower = user?.is_admin || myRole === "admin";
 
   const categoryName = forum
@@ -155,7 +234,7 @@ const ForumDetail: React.FC = () => {
       setError(
         "Failed to update membership: " + (err.message || "Unknown error"),
       );
-      showToast("Failed to update membership. Please try again.", "error");
+      showToast("Failed to update membership.  Please try again.", "error");
     } finally {
       setJoinLoading(false);
     }
@@ -224,13 +303,13 @@ const ForumDetail: React.FC = () => {
     } catch (err: any) {
       setError("Failed to vote: " + (err.message || "Unknown error"));
       await fetchPosts();
-      showToast("Failed to vote. Please try again.", "error");
+      showToast("Failed to vote.  Please try again.", "error");
     }
   };
 
   const handleDeleteForum = async () => {
     if (!forumId) return;
-    const ok = await showConfirm("DANGER: Delete this forum?");
+    const ok = await showConfirm("DANGER: Delete this forum? ");
     if (!ok) return;
     try {
       await deleteForum(forumId);
@@ -269,12 +348,6 @@ const ForumDetail: React.FC = () => {
     );
 
   const forumCreatedAt = forum.created_at || (forum as any).CreatedAt;
-  const sortedPosts = [...posts].sort((a, b) => {
-    const sa = (a.upvotes || 0) - (a.downvotes || 0);
-    const sb = (b.upvotes || 0) - (b.downvotes || 0);
-    if (sb !== sa) return sb - sa;
-    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-  });
 
   return (
     <div className="min-h-screen bg-white">
@@ -319,7 +392,7 @@ const ForumDetail: React.FC = () => {
                   <button
                     onClick={handleJoinLeave}
                     disabled={joinLoading}
-                    className={`px-6 sm:px-8 py-2.5 rounded-lg font-semibold transition shadow-sm ${
+                    className={`px-6 sm:px-8 py-2. 5 rounded-lg font-semibold transition shadow-sm ${
                       isMember
                         ? "bg-white border-2 border-red-500 text-red-500 hover:bg-red-50"
                         : "bg-blue-600 text-white hover:bg-blue-700 hover:shadow-md"
@@ -388,111 +461,156 @@ const ForumDetail: React.FC = () => {
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 pb-10">
           <div className="md:col-span-2 space-y-6">
-            {sortedPosts.length === 0 ? (
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4">
+              <h2 className="text-lg font-bold text-blue-800">Posts</h2>
+              <div className="relative">
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value as SortOption)}
+                  className="px-4 py-2 pr-10 bg-blue-50 text-blue-700 font-bold text-sm rounded-lg border border-blue-200 hover:bg-blue-100 transition cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none"
+                >
+                  <option value="newest">Newest</option>
+                  <option value="day">Top Today</option>
+                  <option value="week">Top This Week</option>
+                  <option value="month">Top This Month</option>
+                  <option value="alltime">All-Time Top</option>
+                </select>
+                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-blue-700">
+                  <svg
+                    className="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M19 9l-7 7-7-7"
+                    />
+                  </svg>
+                </div>
+              </div>
+            </div>
+            {displayedPosts.length === 0 ? (
               <div className="bg-white p-12 rounded-xl border border-blue-100 shadow-sm text-center">
                 <div className="text-6xl mb-4">📝</div>
                 <h3 className="text-xl font-bold text-gray-800 mb-2">
-                  No posts yet
+                  No posts found
                 </h3>
                 <p className="text-gray-500">
-                  Be the first to start a conversation.
+                  {posts.length === 0
+                    ? "Be the first to start a conversation."
+                    : "Try a different filter."}
                 </p>
               </div>
             ) : (
-              sortedPosts.map((post) => {
-                const postDate = post.created_at || (post as any).CreatedAt;
-                const authorUsername =
-                  (post as any).user?.username || "Anonymous User";
-                const voteCount = (post.upvotes || 0) - (post.downvotes || 0);
-                const upActive = post.my_vote === 1;
-                const downActive = post.my_vote === -1;
+              <>
+                {displayedPosts.map((post) => {
+                  const postDate = post.created_at || (post as any).CreatedAt;
+                  const authorUsername =
+                    (post as any).user?.username || "Anonymous User";
+                  const voteCount = (post.upvotes || 0) - (post.downvotes || 0);
+                  const upActive = post.my_vote === 1;
+                  const downActive = post.my_vote === -1;
 
-                return (
-                  <div
-                    key={post.id}
-                    className="bg-white p-6 rounded-xl border border-blue-100 shadow-sm hover:shadow-lg hover:border-blue-300 hover:bg-blue-50 transition"
-                  >
-                    <div className="flex items-center gap-2 mb-3">
-                      <div
-                        className="w-6 h-6 rounded-full bg-blue-200 flex items-center justify-center text-[10px] text-blue-700 font-bold uppercase select-none"
-                        style={{ userSelect: "none" }}
-                      >
-                        {authorUsername.charAt(0)}
-                      </div>
-                      <span
-                        className="text-sm font-semibold text-gray-700 hover:text-blue-600 hover:underline cursor-pointer"
-                        onClick={() => navigate(`/profile/${post.user_id}`)}
-                        style={{
-                          userSelect:
-                            authorUsername === "Anonymous User"
-                              ? "none"
-                              : undefined,
-                        }}
-                      >
-                        {authorUsername}
-                      </span>
-                      <span className="text-gray-300 text-xs">•</span>
-                      <span className="text-xs text-gray-400">
-                        {formatDate(postDate)}
-                      </span>
-                    </div>
-                    <h3 className="text-xl font-bold text-gray-900 mb-2 leading-tight">
-                      {post.title}
-                    </h3>
-                    <p className="text-gray-600 mb-4 line-clamp-3 leading-relaxed whitespace-pre-wrap">
-                      {post.body}
-                    </p>
-                    {post.media_url && (
-                      <div className="mb-4 rounded-lg overflow-hidden border border-blue-100 bg-black">
-                        {isVideo(post.media_type) ? (
-                          <video
-                            src={getMediaUrl(post.media_url)}
-                            controls
-                            className="w-full max-h-96 object-contain mx-auto"
-                          />
-                        ) : (
-                          <img
-                            src={getMediaUrl(post.media_url)}
-                            alt="Post"
-                            className="w-full max-h-96 object-contain mx-auto"
-                          />
-                        )}
-                      </div>
-                    )}
-                    <div className="flex flex-wrap items-center gap-4">
-                      <div className="flex items-center bg-blue-50 rounded-lg border border-blue-100 overflow-hidden">
-                        <button
-                          onClick={() =>
-                            handleVote(post.id as number, "upvote")
-                          }
-                          className={`px-3 py-1.5 hover:bg-blue-200 transition font-bold cursor-pointer ${upActive ? "text-blue-600" : "text-blue-400 hover:text-blue-700"}`}
-                          title={upActive ? "Remove upvote" : "Upvote"}
+                  return (
+                    <div
+                      key={post.id}
+                      className="bg-white p-6 rounded-xl border border-blue-100 shadow-sm hover:shadow-lg hover:border-blue-300 hover:bg-blue-50 transition"
+                    >
+                      <div className="flex items-center gap-2 mb-3">
+                        <div
+                          className="w-6 h-6 rounded-full bg-blue-200 flex items-center justify-center text-[10px] text-blue-700 font-bold uppercase select-none"
+                          style={{ userSelect: "none" }}
                         >
-                          ▲
-                        </button>
-                        <span className="text-sm font-bold text-blue-900 px-1 select-none">
-                          {voteCount}
+                          {authorUsername.charAt(0)}
+                        </div>
+                        <span
+                          className="text-sm font-semibold text-gray-700 hover:text-blue-600 hover:underline cursor-pointer"
+                          onClick={() => navigate(`/profile/${post.user_id}`)}
+                          style={{
+                            userSelect:
+                              authorUsername === "Anonymous User"
+                                ? "none"
+                                : undefined,
+                          }}
+                        >
+                          {authorUsername}
                         </span>
+                        <span className="text-gray-300 text-xs">•</span>
+                        <span className="text-xs text-gray-400">
+                          {formatDate(postDate)}
+                        </span>
+                      </div>
+                      <h3 className="text-xl font-bold text-gray-900 mb-2 leading-tight">
+                        {post.title}
+                      </h3>
+                      <p className="text-gray-600 mb-4 line-clamp-3 leading-relaxed whitespace-pre-wrap">
+                        {post.body}
+                      </p>
+                      {post.media_url && (
+                        <div className="mb-4 rounded-lg overflow-hidden border border-blue-100 bg-black">
+                          {isVideo(post.media_type) ? (
+                            <video
+                              src={getMediaUrl(post.media_url)}
+                              controls
+                              className="w-full max-h-96 object-contain mx-auto"
+                            />
+                          ) : (
+                            <img
+                              src={getMediaUrl(post.media_url)}
+                              alt="Post"
+                              className="w-full max-h-96 object-contain mx-auto"
+                            />
+                          )}
+                        </div>
+                      )}
+                      <div className="flex flex-wrap items-center gap-4">
+                        <div className="flex items-center bg-blue-50 rounded-lg border border-blue-100 overflow-hidden">
+                          <button
+                            onClick={() =>
+                              handleVote(post.id as number, "upvote")
+                            }
+                            className={`px-3 py-1.5 hover:bg-blue-200 transition font-bold cursor-pointer ${upActive ? "text-blue-600" : "text-blue-400 hover:text-blue-700"}`}
+                            title={upActive ? "Remove upvote" : "Upvote"}
+                          >
+                            ▲
+                          </button>
+                          <span className="text-sm font-bold text-blue-900 px-1 select-none">
+                            {voteCount}
+                          </span>
+                          <button
+                            onClick={() =>
+                              handleVote(post.id as number, "downvote")
+                            }
+                            className={`px-3 py-1.5 hover:bg-blue-200 transition font-bold cursor-pointer ${downActive ? "text-red-500" : "text-blue-400 hover:text-red-500"}`}
+                            title={downActive ? "Remove downvote" : "Downvote"}
+                          >
+                            ▼
+                          </button>
+                        </div>
                         <button
-                          onClick={() =>
-                            handleVote(post.id as number, "downvote")
-                          }
-                          className={`px-3 py-1.5 hover:bg-blue-200 transition font-bold cursor-pointer ${downActive ? "text-red-500" : "text-blue-400 hover:text-red-500"}`}
-                          title={downActive ? "Remove downvote" : "Downvote"}
+                          className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-50 rounded-lg transition cursor-pointer"
+                          onClick={() => navigate(`/posts/${post.id}`)}
                         >
-                          ▼
+                          <span>💬</span> <span>Comment</span>
                         </button>
                       </div>
-                      <button
-                        className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-50 rounded-lg transition cursor-pointer"
-                        onClick={() => navigate(`/posts/${post.id}`)}
-                      >
-                        <span>💬</span> <span>Comment</span>
-                      </button>
                     </div>
+                  );
+                })}
+                {visibleCount < filteredPosts.length && (
+                  <div className="text-center pt-6">
+                    <button
+                      onClick={handleLoadMore}
+                      className="px-6 py-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition shadow cursor-pointer"
+                    >
+                      Load More
+                    </button>
                   </div>
-                );
-              })
+                )}
+              </>
             )}
           </div>
           <div className="hidden md:block">
