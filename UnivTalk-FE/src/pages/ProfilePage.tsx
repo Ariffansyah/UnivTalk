@@ -583,9 +583,9 @@ const ProfilePage: React.FC = () => {
                         navigate(`/forums/${forumId}`);
                       }}
                       className="px-2 py-1.5 text-[10px] font-bold rounded bg-blue-50 text-blue-700 border border-blue-100 hover:bg-blue-100 transition"
-                      title="View community"
+                      title="View forum"
                     >
-                      {forumMeta?.title ?? "Community"}
+                      {forumMeta?.title ?? "Forum"}
                     </button>
                   </div>
                   <h4 className="font-bold text-gray-900 text-lg mb-2 group-hover:text-blue-600 transition">

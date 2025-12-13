@@ -37,7 +37,7 @@ const CreateForumPage: React.FC = () => {
     setError("");
 
     if (!name.trim()) {
-      setError("Community name is required");
+      setError("Forum name is required");
       setLoading(false);
       return;
     }
@@ -81,7 +81,7 @@ const CreateForumPage: React.FC = () => {
     <div className="min-h-screen bg-gray-100 flex justify-center py-10 px-4">
       <div className="w-full max-w-2xl">
         <h1 className="text-2xl font-bold text-gray-900 mb-6 pb-4 border-b border-gray-300">
-          Create a Community
+          Create a Forum
         </h1>
 
         <form
@@ -99,7 +99,7 @@ const CreateForumPage: React.FC = () => {
               Name
             </label>
             <p className="text-xs text-gray-500 mb-2">
-              Community names including capitalization cannot be changed.
+              Forum names including capitalization cannot be changed.
             </p>
             <input
               type="text"
@@ -107,7 +107,7 @@ const CreateForumPage: React.FC = () => {
               onChange={(e) => setName(e.target.value)}
               maxLength={21}
               className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none"
-              placeholder="Community name"
+              placeholder="Forum name"
             />
             <div className="text-xs text-gray-400 mt-1 text-right">
               {21 - name.length} Characters remaining
@@ -143,7 +143,7 @@ const CreateForumPage: React.FC = () => {
               onChange={(e) => setDescription(e.target.value)}
               rows={4}
               className="w-full p-3 border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none"
-              placeholder="What is this community about?"
+              placeholder="What is this forum about?"
             ></textarea>
           </div>
 
@@ -162,7 +162,7 @@ const CreateForumPage: React.FC = () => {
                 loading ? "opacity-50 cursor-not-allowed" : ""
               }`}
             >
-              {loading ? "Creating..." : "Create Community"}
+              {loading ? "Creating..." : "Create Forum"}
             </button>
           </div>
         </form>

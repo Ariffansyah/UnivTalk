@@ -1,10 +1,15 @@
 import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { signIn } from "../services/api/auth.ts";
+import { signIn, getUserProfile } from "../services/api/auth.ts";
+import { useAuth } from "../context/AuthContext";
+import logo from "../assets/LogoUnivTalk.png";
+
+<img src={logo} />
 
 const SignInPage: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
+  const { setUser } = useAuth();
 
   const [formData, setFormData] = useState({
     username: "",
@@ -35,7 +40,23 @@ const SignInPage: React.FC = () => {
       const res = await signIn(formData.username.trim(), formData.password);
 
       if (res.success) {
-        navigate("/", { replace: true });
+        const maxAttempts = 3;
+        const delays = [300, 700, 1200];
+        let profileRes: any = null;
+        for (let i = 0; i < maxAttempts; i++) {
+          try {
+            profileRes = await getUserProfile();
+            if (profileRes.success && profileRes.profile) break;
+          } catch (err) {
+          }
+          await new Promise((r) => setTimeout(r, delays[i] ?? 500));
+        }
+        if (profileRes && profileRes.success && profileRes.profile) {
+          setUser(profileRes.profile);
+          navigate("/", { replace: true });
+        } else {
+          setErrorMsg("Failed to fetch user profile after sign-in. Please refresh the page.");
+        }
       } else {
         setErrorMsg(res.message);
       }
@@ -47,10 +68,10 @@ const SignInPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-600 to-orange-100 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-blue-600 to-yellow-100 flex items-center justify-center p-4">
       <div className="max-w-md w-full bg-white p-8 rounded-xl shadow-lg border border-gray-200">
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-blue-500 mb-2">UnivTalk</h1>
+            <img src={logo} alt="UnivTalk Logo" className="w-32 mx-auto" />
           <h2 className="text-2xl font-semibold text-gray-700">Sign In</h2>
           <p className="text-gray-500 text-sm mt-1">Welcome back to our community</p>
         </div>

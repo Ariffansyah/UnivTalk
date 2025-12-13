@@ -466,7 +466,7 @@ const PostDetail: React.FC = () => {
                   <button
                     onClick={() => navigate(`/forums/${forum.fid}`)}
                     className="px-3 py-1.5 text-xs font-bold rounded-lg bg-blue-50 text-blue-700 border border-blue-100 hover:bg-blue-100 transition"
-                    title="View community"
+                    title="View forum"
                   >
                     {forum.title}
                   </button>
