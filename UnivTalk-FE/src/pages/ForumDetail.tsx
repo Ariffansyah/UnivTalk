@@ -6,6 +6,7 @@ import {
   leaveForum,
   getForumMembers,
   deleteForum,
+  getCategories,
   type Forum,
 } from "../services/api/forums";
 import { getPostsByForum, votePost, type Post } from "../services/api/posts";
@@ -36,6 +37,7 @@ const ForumDetail: React.FC = () => {
   const { showToast, showConfirm } = useAlert();
 
   const [forum, setForum] = useState<Forum | null>(null);
+  const [categories, setCategories] = useState<{ id: number; name: string }[]>([]);
   const [posts, setPosts] = useState<PostWithVote[]>([]);
   const [realMemberCount, setRealMemberCount] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -85,6 +87,11 @@ const ForumDetail: React.FC = () => {
         }
         await fetchPosts();
         try {
+          const catRes = await getCategories();
+          const cats = catRes && (catRes as any).data ? (catRes as any).data : [];
+          setCategories(cats);
+        } catch {}
+        try {
           const membersRes = await getForumMembers(forumId);
           if (membersRes && membersRes.forum_members) {
             setRealMemberCount(membersRes.forum_members.length);
@@ -115,6 +122,8 @@ const ForumDetail: React.FC = () => {
   }, [forumId, user]);
 
   const hasAdminPower = user?.is_admin || myRole === "admin";
+
+  const categoryName = forum ? categories.find((c) => c.id === forum.category_id)?.name : undefined;
 
   const handleJoinLeave = async () => {
     if (!forumId || !user || joinLoading) return;
@@ -304,7 +313,7 @@ const ForumDetail: React.FC = () => {
                 <h1 className="text-3xl font-bold text-gray-900">
                   {forum.title}
                 </h1>
-                <p className="text-gray-500 font-medium">Community Forum</p>
+                <p className="text-gray-500 font-medium">Forum</p>
               </div>
             </div>
             {user && (
@@ -340,9 +349,9 @@ const ForumDetail: React.FC = () => {
                   >
                     {joinLoading
                       ? "Processing..."
-                      : isMember
-                        ? "Leave Community"
-                        : "Join Community"}
+                        : isMember
+                        ? "Leave Forum"
+                        : "Join Forum"}
                   </button>
                 )}
               </div>
@@ -374,6 +383,13 @@ const ForumDetail: React.FC = () => {
                   Established
                 </span>
               </div>
+              {categoryName && (
+                <div className="flex flex-col">
+                  <span className="text-xs font-bold text-gray-600 bg-gray-100 px-3 py-1 rounded-full">
+                    {categoryName}
+                  </span>
+                </div>
+              )}
             </div>
             <p className="text-gray-600 flex-1 md:text-right italic">
               "{forum.description}"

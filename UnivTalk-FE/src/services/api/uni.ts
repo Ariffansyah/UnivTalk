@@ -33,6 +33,8 @@ export async function fetchUniversitySuggestions(
       }
       return String(item);
     });
+  } catch {
+    console.error("Failed to fetch university suggestions", name);
   } catch (err) {
     console.error("Failed to fetch university suggestions:", err);
     return [];

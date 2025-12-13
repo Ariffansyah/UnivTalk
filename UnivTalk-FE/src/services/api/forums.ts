@@ -7,6 +7,7 @@ export interface Forum {
   description: string;
   member_count: number;
   created_at: string;
+  category_id?: number;
 }
 
 export interface CreateForumInput {

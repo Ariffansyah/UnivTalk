@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { Link } from "react-router-dom";
-import { getForums, type Forum } from "../services/api/forums";
+import { getForums, getCategories, type Forum } from "../services/api/forums";
 
 const getValidDate = (dateString?: string) => {
   if (!dateString) return new Date();
@@ -18,6 +18,8 @@ const ForumList: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [categories, setCategories] = useState<{ id: number; name: string }[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
   const [displayLimit, setDisplayLimit] = useState(10);
 
   useEffect(() => {
@@ -25,8 +27,10 @@ const ForumList: React.FC = () => {
       setLoading(true);
       setError(null);
       try {
-        const res = await getForums();
+        const [res, catRes] = await Promise.all([getForums(), getCategories()]);
         const list = res && res.forums ? res.forums : [];
+        const cats = catRes && (catRes as any).data ? (catRes as any).data : [];
+        setCategories(cats);
         setForums(list);
         setFilteredForums(list);
       } catch (err: any) {
@@ -41,14 +45,16 @@ const ForumList: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    const filtered = forums.filter(
-      (forum) =>
+    const filtered = forums.filter((forum) => {
+      const matchesText =
         forum.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        forum.description.toLowerCase().includes(searchQuery.toLowerCase()),
-    );
+        forum.description.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesCategory = selectedCategory ? forum.category_id === selectedCategory : true;
+      return matchesText && matchesCategory;
+    });
     setFilteredForums(filtered);
     setDisplayLimit(10);
-  }, [searchQuery, forums]);
+  }, [searchQuery, forums, selectedCategory]);
 
   const handleScroll = useCallback(() => {
     if (
@@ -82,9 +88,9 @@ const ForumList: React.FC = () => {
     <div className="max-w-4xl mx-auto py-10 px-4">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Communities</h1>
+          <h1 className="text-3xl font-bold text-gray-900">Forums</h1>
           <p className="text-gray-500 mt-1 text-sm">
-            Discover and join student communities
+            Discover and join student forums
           </p>
         </div>
 
@@ -107,12 +113,35 @@ const ForumList: React.FC = () => {
             </span>
             <input
               type="text"
-              placeholder="Search communities..."
+              placeholder="Search forums..."
               className="block w-full pl-10 pr-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white text-sm transition"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
+
+          <div>
+            <select
+              value={selectedCategory ?? ""}
+              onChange={(e) => setSelectedCategory(e.target.value ? Number(e.target.value) : null)}
+              className="py-2 px-3 border border-gray-200 rounded-lg bg-white text-sm"
+            >
+              <option value="">All Categories</option>
+              {categories.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          {selectedCategory && (
+            <button
+              onClick={() => setSelectedCategory(null)}
+              className="text-sm text-gray-500 px-3 py-2 border border-gray-200 rounded-lg bg-white hover:bg-gray-50"
+            >
+              Clear
+            </button>
+          )}
 
           <Link
             to="/forums/new"
@@ -131,10 +160,8 @@ const ForumList: React.FC = () => {
 
       {forumsToShow.length === 0 ? (
         <div className="text-center py-20 bg-white rounded-2xl border border-dashed border-gray-300">
-          <h3 className="text-lg font-bold text-gray-800">
-            No communities found
-          </h3>
-          <p className="text-gray-500">Try adjusting your search.</p>
+          <h3 className="text-lg font-bold text-gray-800">No forums found</h3>
+          <p className="text-gray-500">Try adjusting your search or category.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-4">
@@ -158,9 +185,21 @@ const ForumList: React.FC = () => {
                       <h2 className="text-xl font-bold text-gray-900 group-hover:text-blue-600 transition truncate">
                         {forum.title}
                       </h2>
-                      <span className="shrink-0 text-xs font-bold text-blue-600 bg-blue-50 px-3 py-1 rounded-full">
-                        View
-                      </span>
+
+                      <div className="flex items-center gap-2">
+                        {categories && categories.length > 0 && forum.category_id && (
+                          <span
+                            onClick={() => setSelectedCategory(forum.category_id ?? null)}
+                            role="button"
+                            className={`text-xs font-bold px-3 py-1 rounded-full cursor-pointer ${selectedCategory === forum.category_id ? "bg-blue-600 text-white" : "text-gray-600 bg-gray-100"}`}
+                          >
+                            {categories.find((c) => c.id === forum.category_id)?.name}
+                          </span>
+                        )}
+                        <span className="shrink-0 text-xs font-bold text-blue-600 bg-blue-50 px-3 py-1 rounded-full">
+                          View
+                        </span>
+                      </div>
                     </div>
 
                     <p className="text-gray-600 mt-1 line-clamp-2 text-sm leading-relaxed">

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { getForums, type Forum } from "../services/api/forums";
+import { getForums, getCategories, type Forum, type Category } from "../services/api/forums";
 import {
   getGlobalPosts,
   getPostVotes,
@@ -16,6 +16,7 @@ const LandingPage: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [forums, setForums] = useState<Forum[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [posts, setPosts] = useState<PostWithVote[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -23,6 +24,17 @@ const LandingPage: React.FC = () => {
     if (!dateString) return "";
     const date = new Date(dateString);
     return isNaN(date.getTime()) ? "" : date.toLocaleDateString();
+  };
+
+  const getMediaUrl = (path?: string) => {
+    if (!path) return "";
+    if (path.startsWith("http")) return path;
+    return `${import.meta.env.VITE_API_URL}${path}`;
+  };
+
+  const isVideo = (type?: string) => {
+    if (!type) return false;
+    return type.toLowerCase().includes("video");
   };
 
   const fetchPostsWithVotes = async () => {
@@ -63,9 +75,12 @@ const LandingPage: React.FC = () => {
     const fetchData = async () => {
       setLoading(true);
       try {
-        const [forumRes] = await Promise.all([getForums()]);
+        const [forumRes, catRes] = await Promise.all([getForums(), getCategories()]);
         if (forumRes && (forumRes as any).forums) {
           setForums((forumRes as any).forums);
+        }
+        if (catRes && (catRes as any).data) {
+          setCategories((catRes as any).data);
         }
         await fetchPostsWithVotes();
       } catch {
@@ -157,7 +172,7 @@ const LandingPage: React.FC = () => {
           <div className="lg:col-span-3 space-y-6 order-2 lg:order-1">
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden sticky top-24">
               <div className="p-4 bg-gray-50 border-b border-gray-100">
-                <h2 className="font-bold text-gray-900">Communities</h2>
+                <h2 className="font-bold text-gray-900">Forums</h2>
               </div>
               <div className="divide-y divide-gray-50 max-h-[60vh] overflow-y-auto custom-scrollbar">
                 {forums.map((forum) => (
@@ -170,9 +185,16 @@ const LandingPage: React.FC = () => {
                       {forum.title.charAt(0)}
                     </div>
                     <div className="min-w-0">
-                      <p className="text-sm font-semibold text-gray-800 truncate">
-                        {forum.title}
-                      </p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-semibold text-gray-800 truncate">
+                          {forum.title}
+                        </p>
+                        {forum.category_id && (
+                          <span className="text-[10px] text-gray-600 bg-gray-100 px-2 py-0.5 rounded-full">
+                            {categories.find((c) => c.id === forum.category_id)?.name}
+                          </span>
+                        )}
+                      </div>
                       <p className="text-[10px] text-gray-500">
                         {forum.member_count} members
                       </p>
@@ -184,7 +206,7 @@ const LandingPage: React.FC = () => {
                 to="/forums"
                 className="block text-center py-3 text-xs font-bold text-blue-600 hover:bg-gray-50 border-t border-gray-50 transition"
               >
-                View All Communities
+                View All Forums
               </Link>
             </div>
           </div>
@@ -249,9 +271,9 @@ const LandingPage: React.FC = () => {
                           navigate(`/forums/${post.forum_id}`);
                         }}
                         className="px-2 py-1.5 text-[10px] font-bold rounded bg-blue-50 text-blue-700 border border-blue-100 hover:bg-blue-100 transition"
-                        title="View community"
+                        title="View forum"
                       >
-                        {forumMeta?.title ?? "Community"}
+                        {forumMeta?.title ?? "Forum"}
                       </button>
                     </div>
 
@@ -261,6 +283,27 @@ const LandingPage: React.FC = () => {
                     <p className="text-sm text-gray-600 line-clamp-3 mb-4 leading-relaxed whitespace-pre-wrap">
                       {post.body}
                     </p>
+
+                    {post.media_url && (
+                      <div className="mt-2 rounded-lg overflow-hidden bg-black border border-gray-100">
+                        {isVideo(post.media_type) ? (
+                          <video
+                            src={getMediaUrl(post.media_url)}
+                            controls
+                            playsInline
+                            preload="metadata"
+                            className="w-full max-h-60 rounded-lg"
+                          />
+                        ) : (
+                          <img
+                            src={getMediaUrl(post.media_url)}
+                            alt={post.title}
+                            loading="lazy"
+                            className="w-full max-h-60 rounded-lg object-contain"
+                          />
+                        )}
+                      </div>
+                    )}
 
                     <div className="flex items-center gap-4 border-t pt-3 border-gray-50">
                       <div className="flex items-center bg-gray-50 rounded-lg border border-gray-100 overflow-hidden">

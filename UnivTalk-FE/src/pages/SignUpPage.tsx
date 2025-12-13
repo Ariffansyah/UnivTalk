@@ -48,7 +48,7 @@ const SignUpPage: React.FC = () => {
       try {
         const result = await fetchUniversitySuggestions(form.university);
         setSuggestions(result);
-        setShowSuggestions(result.length > 0);
+        setShowSuggestions(true);
       } catch (err) {
         console.error(err);
       } finally {
@@ -153,6 +153,7 @@ const SignUpPage: React.FC = () => {
         className="w-full max-w-lg bg-white rounded-xl shadow-2xl p-8max-w-md mx-auto bg-white p-8 rounded-xl shadow-lg border border-gray-200"
       >
         <div className="text-center mb-8">
+          <img src={logo} alt="UnivTalk Logo" className="w-32 mx-auto mb-4" />
           <img
             src={logo}
             alt="UnivTalk Logo"

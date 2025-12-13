@@ -135,13 +135,16 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({
                   <video
                     src={mediaPreview}
                     controls
-                    className="rounded-xl max-h-64 w-full object-cover"
+                    playsInline
+                    preload="metadata"
+                    className="rounded-xl max-h-64 w-full"
                   />
                 ) : (
                   <img
                     src={mediaPreview}
                     alt="Preview"
-                    className="rounded-xl max-h-64 w-full object-cover"
+                    loading="lazy"
+                    className="rounded-xl max-h-64 w-full object-contain"
                   />
                 )}
                 <button
