@@ -15,7 +15,7 @@ import PostDetail from "./pages/PostDetail";
 import ProfilePage from "./pages/ProfilePage";
 import CreateForumPage from "./pages/CreateForumPage";
 import NotFound from "./pages/NotFound";
-
+import CreditPage from "./pages/CreditPage";
 function App() {
   return (
     <ErrorBoundary>
@@ -37,6 +37,7 @@ function App() {
                 <Route path="/posts/:postId" element={<PostDetail />} />
                 <Route path="/profile" element={<ProfilePage />} />
                 <Route path="/profile/:userId" element={<ProfilePage />} />
+                <Route path="/credits" element={<CreditPage />} />
               </Route>
             </Route>
 
