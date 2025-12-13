@@ -9,6 +9,8 @@ interface CreatePostModalProps {
   onPostCreated: () => void;
 }
 
+const MAX_MEDIA_SIZE = 10 * 1024 * 1024;
+
 const CreatePostModal: React.FC<CreatePostModalProps> = ({
   forumId,
   isOpen,
@@ -21,14 +23,27 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({
   const [media, setMedia] = useState<File | null>(null);
   const [mediaPreview, setMediaPreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [validationError, setValidationError] = useState<string>("");
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   if (!isOpen) return null;
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setValidationError("");
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
+
+      // Accept only images or videos
+      if (!file.type.match(/^image\/|^video\//)) {
+        setValidationError("Media must be an image or video file.");
+        return;
+      }
+      // Max 10MB size
+      if (file.size > MAX_MEDIA_SIZE) {
+        setValidationError("Media file must be smaller than 10MB.");
+        return;
+      }
       setMedia(file);
       setMediaPreview(URL.createObjectURL(file));
     }
@@ -40,21 +55,38 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
+  const validateForm = () => {
+    if (!title.trim()) return "Title is required.";
+    if (title.trim().length < 5) return "Title must be at least 5 characters.";
+    if (!body.trim()) return "Body is required.";
+    if (body.trim().length < 10) return "Body must be at least 10 characters.";
+    if (media) {
+      if (!media.type.match(/^image\/|^video\//))
+        return "Media must be an image or video file.";
+      if (media.size > MAX_MEDIA_SIZE)
+        return "Media file must be smaller than 10MB.";
+    }
+    return "";
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim() || !body.trim()) return;
+    setValidationError("");
+    const error = validateForm();
+    if (error) {
+      setValidationError(error);
+      return;
+    }
 
     setLoading(true);
     try {
       const formData = new FormData();
       formData.append("forum_id", forumId);
-      formData.append("title", title);
-      formData.append("body", body);
-
+      formData.append("title", title.trim());
+      formData.append("body", body.trim());
       if (media) {
         formData.append("media", media);
       }
-
       await createPost(formData);
 
       setTitle("");
@@ -63,8 +95,9 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({
       onPostCreated();
       onClose();
     } catch (error) {
-      console.error("Failed to post", error);
-      alert("Failed to create post. Please try again.");
+      setValidationError(
+        "Failed to create post. Please try again or check your connection.",
+      );
     } finally {
       setLoading(false);
     }
@@ -77,6 +110,8 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({
           <button
             onClick={onClose}
             className="text-gray-500 hover:text-gray-800 transition rounded-full p-2 hover:bg-gray-100"
+            aria-label="Close create post modal"
+            tabIndex={0}
           >
             <svg
               className="w-5 h-5"
@@ -100,15 +135,19 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({
                 ? "bg-blue-300 text-white cursor-not-allowed"
                 : "bg-blue-600 text-white hover:bg-blue-700"
             }`}
+            type="button"
+            tabIndex={0}
           >
             {loading ? "Posting..." : "Post"}
           </button>
         </div>
 
-        {/* Body Modal */}
         <div className="p-4 flex gap-3">
           <div className="shrink-0">
-            <div className="w-10 h-10 rounded-full bg-linear-to-tr from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold">
+            <div
+              className="w-10 h-10 rounded-full bg-linear-to-tr from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold"
+              style={{ userSelect: "none" }}
+            >
               {user?.username.charAt(0).toUpperCase()}
             </div>
           </div>
@@ -119,14 +158,20 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({
               placeholder="Title of your discussion"
               className="w-full text-lg font-bold placeholder-gray-400 border-none focus:ring-0 p-0 text-gray-900 outline-none"
               value={title}
+              minLength={5}
+              maxLength={80}
               onChange={(e) => setTitle(e.target.value)}
+              required
             />
 
             <textarea
               placeholder="What's happening?"
               className="w-full min-h-[120px] text-gray-600 placeholder-gray-400 border-none focus:ring-0 p-0 resize-none text-base outline-none"
               value={body}
+              minLength={10}
+              maxLength={4000}
               onChange={(e) => setBody(e.target.value)}
+              required
             ></textarea>
 
             {mediaPreview && (
@@ -150,6 +195,9 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({
                 <button
                   onClick={removeMedia}
                   className="absolute top-2 right-2 bg-gray-900 bg-opacity-75 text-white rounded-full p-1 hover:bg-opacity-100 transition"
+                  aria-label="Remove attached media"
+                  type="button"
+                  tabIndex={0}
                 >
                   <svg
                     className="w-4 h-4"
@@ -168,12 +216,19 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({
               </div>
             )}
 
+            {validationError && (
+              <div className="mt-2 text-sm text-red-600 font-semibold bg-red-50 border border-red-200 rounded px-3 py-2">
+                {validationError}
+              </div>
+            )}
+
             <div className="pt-3 border-t border-gray-100 flex items-center">
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 className="p-2 text-blue-500 hover:bg-blue-50 rounded-full transition"
                 title="Add Media"
+                tabIndex={0}
               >
                 <svg
                   className="w-5 h-5"
@@ -196,6 +251,9 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({
                 accept="image/*,video/*"
                 onChange={handleFileChange}
               />
+              <span className="ml-4 text-xs text-gray-400">
+                JPG, PNG, MP4, MOV. Max size 10MB.
+              </span>
             </div>
           </div>
         </div>

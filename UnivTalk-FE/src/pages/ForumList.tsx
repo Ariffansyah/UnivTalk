@@ -36,8 +36,11 @@ const ForumList: React.FC = () => {
         setForums(list);
         setFilteredForums(list);
       } catch (err: any) {
-        console.error("Fetch error:", err);
-        setError(err.message || "Error fetching forums");
+        setError(
+          err.message
+            ? `Failed to load forums: ${err.message}`
+            : "Failed to load forums. Please try reloading this page.",
+        );
       } finally {
         setLoading(false);
       }
@@ -121,6 +124,7 @@ const ForumList: React.FC = () => {
               className="block w-full pl-10 pr-3 py-2 border border-blue-100 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white text-sm transition"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
+              aria-label="Search forums"
             />
           </div>
 
@@ -132,7 +136,8 @@ const ForumList: React.FC = () => {
                   e.target.value ? Number(e.target.value) : null,
                 )
               }
-              className="py-2 px-3 border border-blue-100 rounded-lg bg-white text-sm"
+              className="py-2 px-3 border border-blue-100 rounded-lg bg-white text-sm cursor-pointer"
+              aria-label="Filter by category"
             >
               <option value="">All Categories</option>
               {categories.map((c) => (
@@ -145,7 +150,9 @@ const ForumList: React.FC = () => {
           {selectedCategory && (
             <button
               onClick={() => setSelectedCategory(null)}
-              className="text-sm text-gray-500 px-3 py-2 border border-blue-100 rounded-lg bg-white hover:bg-blue-50 transition"
+              className="text-sm text-gray-500 px-3 py-2 border border-blue-100 rounded-lg bg-white hover:bg-blue-50 transition cursor-pointer"
+              aria-label="Clear category filter"
+              type="button"
             >
               Clear
             </button>
@@ -153,7 +160,7 @@ const ForumList: React.FC = () => {
 
           <Link
             to="/forums/new"
-            className="whitespace-nowrap bg-blue-600 text-white px-5 py-2 rounded-lg font-bold hover:bg-blue-700 transition shadow-md flex items-center gap-2"
+            className="whitespace-nowrap bg-blue-600 text-white px-5 py-2 rounded-lg font-bold hover:bg-blue-700 transition shadow-md flex items-center gap-2 cursor-pointer"
           >
             <span>+</span> Create
           </Link>
@@ -161,16 +168,18 @@ const ForumList: React.FC = () => {
       </div>
 
       {error && (
-        <div className="bg-red-50 border-l-4 border-red-500 text-red-700 p-4 rounded mb-6">
+        <div className="bg-red-50 border-l-4 border-red-500 text-red-700 p-4 rounded mb-6 font-bold">
           {error}
         </div>
       )}
 
-      {forumsToShow.length === 0 ? (
+      {forumsToShow.length === 0 && !loading && !error ? (
         <div className="text-center py-20 bg-white rounded-2xl border border-dashed border-blue-100">
           <h3 className="text-lg font-bold text-gray-800">No forums found</h3>
           <p className="text-gray-500">
-            Try adjusting your search or category.
+            {searchQuery || selectedCategory
+              ? "Try adjusting your search or category."
+              : "No forums have been created yet."}
           </p>
         </div>
       ) : (
@@ -184,9 +193,14 @@ const ForumList: React.FC = () => {
               >
                 <Link
                   to={`/forums/${forum.fid}`}
-                  className="flex items-start gap-5"
+                  className="flex items-start gap-5 focus:outline-none focus:ring-2 focus:ring-blue-300 rounded-lg"
+                  tabIndex={0}
+                  aria-label={`Open forum ${forum.title}`}
                 >
-                  <div className="shrink-0 w-14 h-14 rounded-xl bg-blue-500 flex items-center justify-center text-white text-2xl font-bold shadow-sm uppercase group-hover:bg-blue-600 transition">
+                  <div
+                    className="shrink-0 w-14 h-14 rounded-xl bg-blue-500 flex items-center justify-center text-white text-2xl font-bold shadow-sm uppercase group-hover:bg-blue-600 transition select-none"
+                    style={{ userSelect: "none" }}
+                  >
                     {forum.title.charAt(0)}
                   </div>
 
@@ -201,11 +215,25 @@ const ForumList: React.FC = () => {
                           categories.length > 0 &&
                           forum.category_id && (
                             <span
-                              onClick={() =>
-                                setSelectedCategory(forum.category_id ?? null)
-                              }
+                              onClick={(e) => {
+                                e.preventDefault();
+                                setSelectedCategory(forum.category_id ?? null);
+                              }}
                               role="button"
-                              className={`text-xs font-bold px-3 py-1 rounded-full cursor-pointer ${selectedCategory === forum.category_id ? "bg-blue-600 text-white" : "text-blue-700 bg-blue-50 border border-blue-100"} transition`}
+                              tabIndex={0}
+                              className={`text-xs font-bold px-3 py-1 rounded-full cursor-pointer outline-none ${selectedCategory === forum.category_id ? "bg-blue-600 text-white" : "text-blue-700 bg-blue-50 border border-blue-100"} transition`}
+                              aria-label={`Filter to category ${
+                                categories.find(
+                                  (c) => c.id === forum.category_id,
+                                )?.name || ""
+                              }`}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter" || e.key === " ") {
+                                  setSelectedCategory(
+                                    forum.category_id ?? null,
+                                  );
+                                }
+                              }}
                             >
                               {
                                 categories.find(

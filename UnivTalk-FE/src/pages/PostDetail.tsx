@@ -44,6 +44,7 @@ const PostDetail: React.FC = () => {
   const [comments, setComments] = useState<CommentWithVote[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [commentBody, setCommentBody] = useState("");
   const [replyBody, setReplyBody] = useState("");
   const [activeReplyId, setActiveReplyId] = useState<number | null>(null);
@@ -54,7 +55,6 @@ const PostDetail: React.FC = () => {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [editTitle, setEditTitle] = useState("");
   const [editBody, setEditBody] = useState("");
-
   const [editingCommentId, setEditingCommentId] = useState<number | null>(null);
   const [editingCommentBody, setEditingCommentBody] = useState("");
 
@@ -76,6 +76,9 @@ const PostDetail: React.FC = () => {
   };
 
   const fetchPostAndComments = async () => {
+    setError(null);
+    setActionError(null);
+    setLoading(true);
     try {
       const [postRes, commRes] = await Promise.all([
         getPostById(postId!),
@@ -92,7 +95,6 @@ const PostDetail: React.FC = () => {
       setPost(normalizedPost);
       setEditTitle(normalizedPost.title);
       setEditBody(normalizedPost.body);
-
       const rawComments: Comment[] = ((commRes as any).comments ??
         []) as Comment[];
       const withCounts: CommentWithVote[] = await Promise.all(
@@ -128,7 +130,7 @@ const PostDetail: React.FC = () => {
         }
       }
     } catch (err: any) {
-      setError(err.message || "Failed to load post");
+      setError("Gagal mengambil data post: " + (err?.message || ""));
     } finally {
       setLoading(false);
     }
@@ -138,11 +140,17 @@ const PostDetail: React.FC = () => {
     if (postId) fetchPostAndComments();
   }, [postId]);
 
+  const showActionError = (msg: string) => {
+    setActionError(msg);
+    showToast(msg, "error");
+  };
+
   const handlePostComment = async (
     e: React.FormEvent,
     parentId: number | null = null,
   ) => {
     e.preventDefault();
+    setActionError(null);
     const body = parentId === null ? commentBody : replyBody;
     if (!body.trim() || !postId) return;
     setSubmitting(true);
@@ -165,15 +173,15 @@ const PostDetail: React.FC = () => {
       } else {
         throw new Error("Failed to post comment");
       }
-    } catch (err) {
-      console.error("Failed to post comment:", err);
-      showToast("Failed to post comment", "error");
+    } catch (err: any) {
+      showActionError("Gagal komentar: " + (err.message || ""));
     } finally {
       setSubmitting(false);
     }
   };
 
   const handleVotePost = async (type: "upvote" | "downvote") => {
+    setActionError(null);
     if (!currentUser || !post) {
       showToast("Please sign in to vote.", "warning");
       return;
@@ -232,10 +240,9 @@ const PostDetail: React.FC = () => {
         my_vote: p.my_vote ?? null,
         created_at: (p as any).created_at ?? (p as any).CreatedAt,
       });
-    } catch (err) {
-      console.error("Vote post failed:", err);
+    } catch (err: any) {
+      showActionError("Gagal vote post: " + (err.message || ""));
       await fetchPostAndComments();
-      showToast("Failed to vote. Please try again.", "error");
     }
   };
 
@@ -243,6 +250,7 @@ const PostDetail: React.FC = () => {
     commentId: number,
     type: "upvote" | "downvote",
   ) => {
+    setActionError(null);
     if (!currentUser) {
       showToast("Please sign in to vote.", "warning");
       return;
@@ -317,10 +325,9 @@ const PostDetail: React.FC = () => {
             : c,
         ),
       );
-    } catch (err) {
-      console.error("Vote comment failed:", err);
+    } catch (err: any) {
+      showActionError("Gagal vote comment: " + (err.message || ""));
       await fetchPostAndComments();
-      showToast("Failed to vote. Please try again.", "error");
     } finally {
       setPendingCommentVotes((prev) => ({ ...prev, [commentId]: false }));
     }
@@ -335,6 +342,7 @@ const PostDetail: React.FC = () => {
 
   const handleSubmitEdit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setActionError(null);
     if (!postId) return;
     try {
       const res = await fetch(
@@ -349,13 +357,13 @@ const PostDetail: React.FC = () => {
       if (!res.ok) throw new Error("Failed to update post");
       setIsEditOpen(false);
       await fetchPostAndComments();
-    } catch (err) {
-      console.error("Update post failed:", err);
-      showToast("Failed to update post", "error");
+    } catch (err: any) {
+      showActionError("Gagal update post: " + (err.message || ""));
     }
   };
 
   const handleDeletePost = async () => {
+    setActionError(null);
     if (!postId) return;
     const ok = await showConfirm("Delete this post permanently?");
     if (!ok) return;
@@ -363,9 +371,8 @@ const PostDetail: React.FC = () => {
       await apiDeletePost(postId);
       showToast("Post deleted.", "success");
       navigate(-1);
-    } catch (err) {
-      console.error("Delete post failed:", err);
-      showToast("Failed to delete post", "error");
+    } catch (err: any) {
+      showActionError("Gagal hapus post: " + (err.message || ""));
     }
   };
 
@@ -376,28 +383,28 @@ const PostDetail: React.FC = () => {
 
   const submitEditComment = async (e: React.FormEvent) => {
     e.preventDefault();
+    setActionError(null);
     if (!editingCommentId) return;
     try {
       await updateComment(editingCommentId, editingCommentBody);
       setEditingCommentId(null);
       setEditingCommentBody("");
       await fetchPostAndComments();
-    } catch (err) {
-      console.error("Update comment failed:", err);
-      showToast("Failed to update comment", "error");
+    } catch (err: any) {
+      showActionError("Gagal update comment: " + (err.message || ""));
     }
   };
 
   const handleDeleteComment = async (commentId: number) => {
+    setActionError(null);
     const ok = await showConfirm("Delete this comment?");
     if (!ok) return;
     try {
       await apiDeleteComment(commentId);
       await fetchPostAndComments();
       showToast("Comment deleted.", "success");
-    } catch (err) {
-      console.error("Delete comment failed:", err);
-      showToast("Failed to delete comment", "error");
+    } catch (err: any) {
+      showActionError("Gagal hapus comment: " + (err.message || ""));
     }
   };
 
@@ -409,7 +416,7 @@ const PostDetail: React.FC = () => {
     );
   if (error || !post)
     return (
-      <div className="p-10 text-center text-red-500">
+      <div className="p-10 text-center text-red-600 bg-red-50 border border-red-300 rounded font-bold">
         {error || "Post not found"}
       </div>
     );
@@ -447,6 +454,11 @@ const PostDetail: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-3xl mx-auto px-2 sm:px-4">
+        {actionError && (
+          <div className="mb-4 p-3 text-center bg-red-50 border border-red-400 rounded text-red-700 font-bold">
+            {actionError}
+          </div>
+        )}
         <button
           onClick={() => navigate(-1)}
           className="mb-4 flex items-center gap-2 text-sm font-bold text-blue-600 hover:underline transition"
@@ -458,7 +470,10 @@ const PostDetail: React.FC = () => {
           <div className="p-6">
             <div className="flex flex-col md:flex-row md:items-center justify-between mb-4 gap-2">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold uppercase">
+                <div
+                  className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold uppercase"
+                  style={{ userSelect: "none" }}
+                >
                   {postAuthor.charAt(0)}
                 </div>
                 <div>
@@ -488,14 +503,14 @@ const PostDetail: React.FC = () => {
                   <>
                     <button
                       onClick={handleOpenEdit}
-                      className="px-3 py-1.5 text-xs font-bold rounded-lg bg-gray-900 text-white hover:bg-gray-800 transition"
+                      className="px-3 py-1.5 text-xs font-bold rounded-lg bg-gray-900 text-white hover:bg-gray-800 transition cursor-pointer"
                       title="Edit post"
                     >
                       Edit
                     </button>
                     <button
                       onClick={handleDeletePost}
-                      className="px-3 py-1.5 text-xs font-bold rounded-lg bg-red-600 text-white hover:bg-red-700 transition"
+                      className="px-3 py-1.5 text-xs font-bold rounded-lg bg-red-600 text-white hover:bg-red-700 transition cursor-pointer"
                       title="Delete post"
                     >
                       Delete
@@ -534,7 +549,16 @@ const PostDetail: React.FC = () => {
               <div className="flex items-center bg-blue-50 rounded-lg border border-blue-100">
                 <button
                   onClick={() => handleVotePost("upvote")}
-                  className={`px-4 py-2 transition font-bold ${upActive ? "text-blue-600 hover:bg-blue-200" : "text-blue-400 hover:text-blue-700 hover:bg-blue-200"}`}
+                  className={`px-4 py-2 transition font-bold ${
+                    upActive
+                      ? "text-blue-600 hover:bg-blue-200"
+                      : "text-blue-400 hover:text-blue-700 hover:bg-blue-200"
+                  }`}
+                  style={
+                    !currentUser
+                      ? { cursor: "not-allowed", pointerEvents: "none" }
+                      : { cursor: "pointer" }
+                  }
                   title={upActive ? "Remove upvote" : "Upvote"}
                 >
                   ▲
@@ -544,7 +568,16 @@ const PostDetail: React.FC = () => {
                 </span>
                 <button
                   onClick={() => handleVotePost("downvote")}
-                  className={`px-4 py-2 transition font-bold ${downActive ? "text-red-500 hover:bg-blue-200" : "text-blue-400 hover:text-red-500 hover:bg-blue-200"}`}
+                  className={`px-4 py-2 transition font-bold ${
+                    downActive
+                      ? "text-red-500 hover:bg-blue-200"
+                      : "text-blue-400 hover:text-red-500 hover:bg-blue-200"
+                  }`}
+                  style={
+                    !currentUser
+                      ? { cursor: "not-allowed", pointerEvents: "none" }
+                      : { cursor: "pointer" }
+                  }
                   title={downActive ? "Remove downvote" : "Downvote"}
                 >
                   ▼
@@ -605,7 +638,16 @@ const PostDetail: React.FC = () => {
               <div className="flex justify-end mt-2">
                 <button
                   disabled={submitting || !commentBody.trim()}
-                  className="bg-blue-600 text-white px-6 py-1.5 rounded-full font-bold hover:bg-blue-700 transition text-sm disabled:opacity-50"
+                  className={`bg-blue-600 text-white px-6 py-1.5 rounded-full font-bold text-sm transition ${
+                    submitting || !commentBody.trim()
+                      ? "opacity-50"
+                      : "hover:bg-blue-700 cursor-pointer"
+                  }`}
+                  style={
+                    submitting || !commentBody.trim()
+                      ? { cursor: "not-allowed", pointerEvents: "none" }
+                      : { cursor: "pointer" }
+                  }
                 >
                   Post
                 </button>
@@ -631,7 +673,10 @@ const PostDetail: React.FC = () => {
                   <div className="bg-white p-4 rounded-xl border border-blue-100 shadow-xs">
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
-                        <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center text-[10px] font-bold text-blue-600 uppercase">
+                        <div
+                          className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center text-[10px] font-bold text-blue-600 uppercase"
+                          style={{ userSelect: "none" }}
+                        >
                           {commentAuthor.charAt(0)}
                         </div>
                         <button
@@ -653,13 +698,13 @@ const PostDetail: React.FC = () => {
                             onClick={() =>
                               startEditComment(comment.id, comment.body)
                             }
-                            className="px-2 py-1 text-[10px] font-bold rounded bg-gray-900 text-white hover:bg-gray-800"
+                            className="px-2 py-1 text-[10px] font-bold rounded bg-gray-900 text-white hover:bg-gray-800 cursor-pointer"
                           >
                             Edit
                           </button>
                           <button
                             onClick={() => handleDeleteComment(comment.id)}
-                            className="px-2 py-1 text-[10px] font-bold rounded bg-red-600 text-white hover:bg-red-700"
+                            className="px-2 py-1 text-[10px] font-bold rounded bg-red-600 text-white hover:bg-red-700 cursor-pointer"
                           >
                             Delete
                           </button>
@@ -704,10 +749,17 @@ const PostDetail: React.FC = () => {
                             handleVoteComment(comment.id, "upvote")
                           }
                           className={`px-3 py-1.5 transition font-bold text-xs ${
-                            cUpActive
-                              ? "text-blue-600 hover:bg-blue-200"
-                              : "text-blue-400 hover:text-blue-700 hover:bg-blue-200"
-                          } ${disabled ? "opacity-60 cursor-not-allowed" : ""}`}
+                            cUpActive ? "text-blue-600" : "text-blue-400"
+                          } ${
+                            !disabled
+                              ? "hover:text-blue-700 hover:bg-blue-200 cursor-pointer"
+                              : "opacity-60"
+                          }`}
+                          style={
+                            disabled
+                              ? { cursor: "not-allowed", pointerEvents: "none" }
+                              : { cursor: "pointer" }
+                          }
                           title={cUpActive ? "Remove upvote" : "Upvote"}
                         >
                           ▲
@@ -721,10 +773,17 @@ const PostDetail: React.FC = () => {
                             handleVoteComment(comment.id, "downvote")
                           }
                           className={`px-3 py-1.5 transition font-bold text-xs ${
-                            cDownActive
-                              ? "text-red-500 hover:bg-blue-200"
-                              : "text-blue-400 hover:text-red-500 hover:bg-blue-200"
-                          } ${disabled ? "opacity-60 cursor-not-allowed" : ""}`}
+                            cDownActive ? "text-red-500" : "text-blue-400"
+                          } ${
+                            !disabled
+                              ? "hover:text-red-500 hover:bg-blue-200 cursor-pointer"
+                              : "opacity-60"
+                          }`}
+                          style={
+                            disabled
+                              ? { cursor: "not-allowed", pointerEvents: "none" }
+                              : { cursor: "pointer" }
+                          }
                           title={cDownActive ? "Remove downvote" : "Downvote"}
                         >
                           ▼
@@ -737,7 +796,7 @@ const PostDetail: React.FC = () => {
                               activeReplyId === comment.id ? null : comment.id,
                             )
                           }
-                          className="text-xs font-bold text-blue-600 hover:underline"
+                          className="text-xs font-bold text-blue-600 hover:underline cursor-pointer"
                         >
                           Reply
                         </button>
@@ -767,7 +826,16 @@ const PostDetail: React.FC = () => {
                         </button>
                         <button
                           disabled={!replyBody.trim()}
-                          className="bg-blue-600 text-white px-4 py-1 rounded-full text-xs font-bold"
+                          className={`bg-blue-600 text-white px-4 py-1 rounded-full text-xs font-bold transition ${
+                            !replyBody.trim()
+                              ? "opacity-50"
+                              : "hover:bg-blue-700 cursor-pointer"
+                          }`}
+                          style={
+                            !replyBody.trim()
+                              ? { cursor: "not-allowed", pointerEvents: "none" }
+                              : { cursor: "pointer" }
+                          }
                         >
                           Reply
                         </button>
@@ -817,13 +885,13 @@ const PostDetail: React.FC = () => {
                                   onClick={() =>
                                     startEditComment(reply.id, reply.body)
                                   }
-                                  className="px-2 py-1 text-[10px] font-bold rounded bg-gray-900 text-white hover:bg-gray-800"
+                                  className="px-2 py-1 text-[10px] font-bold rounded bg-gray-900 text-white hover:bg-gray-800 cursor-pointer"
                                 >
                                   Edit
                                 </button>
                                 <button
                                   onClick={() => handleDeleteComment(reply.id)}
-                                  className="px-2 py-1 text-[10px] font-bold rounded bg-red-600 text-white hover:bg-red-700"
+                                  className="px-2 py-1 text-[10px] font-bold rounded bg-red-600 text-white hover:bg-red-700 cursor-pointer"
                                 >
                                   Delete
                                 </button>
@@ -866,7 +934,21 @@ const PostDetail: React.FC = () => {
                               onClick={() =>
                                 handleVoteComment(reply.id, "upvote")
                               }
-                              className={`px-2 py-1.5 transition font-bold text-xs ${rUpActive ? "text-blue-600 hover:bg-blue-200" : "text-blue-400 hover:text-blue-700 hover:bg-blue-200"} ${rDisabled ? "opacity-60 cursor-not-allowed" : ""}`}
+                              className={`px-2 py-1.5 transition font-bold text-xs ${
+                                rUpActive ? "text-blue-600" : "text-blue-400"
+                              } ${
+                                !rDisabled
+                                  ? "hover:text-blue-700 hover:bg-blue-200 cursor-pointer"
+                                  : "opacity-60"
+                              }`}
+                              style={
+                                rDisabled
+                                  ? {
+                                      cursor: "not-allowed",
+                                      pointerEvents: "none",
+                                    }
+                                  : { cursor: "pointer" }
+                              }
                               title={rUpActive ? "Remove upvote" : "Upvote"}
                             >
                               ▲
@@ -879,7 +961,21 @@ const PostDetail: React.FC = () => {
                               onClick={() =>
                                 handleVoteComment(reply.id, "downvote")
                               }
-                              className={`px-2 py-1.5 transition font-bold text-xs ${rDownActive ? "text-red-500 hover:bg-blue-200" : "text-blue-400 hover:text-red-500 hover:bg-blue-200"} ${rDisabled ? "opacity-60 cursor-not-allowed" : ""}`}
+                              className={`px-2 py-1.5 transition font-bold text-xs ${
+                                rDownActive ? "text-red-500" : "text-blue-400"
+                              } ${
+                                !rDisabled
+                                  ? "hover:text-red-500 hover:bg-blue-200 cursor-pointer"
+                                  : "opacity-60"
+                              }`}
+                              style={
+                                rDisabled
+                                  ? {
+                                      cursor: "not-allowed",
+                                      pointerEvents: "none",
+                                    }
+                                  : { cursor: "pointer" }
+                              }
                               title={
                                 rDownActive ? "Remove downvote" : "Downvote"
                               }
@@ -902,4 +998,3 @@ const PostDetail: React.FC = () => {
 };
 
 export default PostDetail;
-

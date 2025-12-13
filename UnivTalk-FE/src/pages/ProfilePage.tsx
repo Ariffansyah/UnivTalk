@@ -16,7 +16,6 @@ import { fetchUniversitySuggestions } from "../services/api/uni";
 import { useAlert } from "../context/AlertContext";
 
 type PostWithVote = Post & { my_vote?: number | null };
-
 const DEBOUNCE_DELAY = 400;
 
 const ProfilePage: React.FC = () => {
@@ -38,6 +37,7 @@ const ProfilePage: React.FC = () => {
   const [editUsername, setEditUsername] = useState("");
   const [editUniversity, setEditUniversity] = useState("");
   const [editStatus, setEditStatus] = useState("");
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const [uniSuggestions, setUniSuggestions] = useState<string[]>([]);
   const [showUniSuggestions, setShowUniSuggestions] = useState(false);
@@ -70,13 +70,14 @@ const ProfilePage: React.FC = () => {
     setSelectedUni(Boolean(profile.university));
     setEditStatus(profile.status || "");
     setIsEditOpen(true);
+    setActionError(null);
     setUniSuggestions([]);
     setShowUniSuggestions(false);
   };
 
   useEffect(() => {
     if (!isEditOpen) return;
-
+    setActionError(null);
     if (!editUniversity.trim() || selectedUni) {
       setUniSuggestions([]);
       setShowUniSuggestions(false);
@@ -87,23 +88,20 @@ const ProfilePage: React.FC = () => {
       }
       return;
     }
-
     setUniLoading(true);
     if (uniDebounce.current) clearTimeout(uniDebounce.current);
-
     uniDebounce.current = setTimeout(async () => {
       try {
         const result = await fetchUniversitySuggestions(editUniversity);
         setUniSuggestions(result);
         setShowUniSuggestions(result.length > 0);
-      } catch (err) {
+      } catch {
         setUniSuggestions([]);
         setShowUniSuggestions(false);
       } finally {
         setUniLoading(false);
       }
     }, DEBOUNCE_DELAY);
-
     return () => {
       if (uniDebounce.current) clearTimeout(uniDebounce.current);
     };
@@ -122,6 +120,7 @@ const ProfilePage: React.FC = () => {
 
   const submitEditProfile = async (e: React.FormEvent) => {
     e.preventDefault();
+    setActionError(null);
 
     if (
       !selectedUni &&
@@ -129,6 +128,7 @@ const ProfilePage: React.FC = () => {
         (s) => s.toLowerCase() === editUniversity.trim().toLowerCase(),
       )
     ) {
+      setActionError("Please select a valid university from the suggestions.");
       showToast(
         "Please select a valid university from the suggestions.",
         "warning",
@@ -158,7 +158,8 @@ const ProfilePage: React.FC = () => {
         setProfile(refreshed.profile);
         showToast("Profile updated.", "success");
       }
-    } catch (err) {
+    } catch (err: any) {
+      setActionError("Failed to update profile: " + (err?.message || ""));
       showToast("Failed to update profile", "error");
     }
   };
@@ -167,6 +168,7 @@ const ProfilePage: React.FC = () => {
     const fetchProfileAndPosts = async () => {
       setLoading(true);
       setError(null);
+      setActionError(null);
       try {
         let targetProfile: UserProfile;
         let targetId: string;
@@ -247,9 +249,11 @@ const ProfilePage: React.FC = () => {
       }
     };
     fetchProfileAndPosts();
+    // eslint-disable-next-line
   }, [userIdParam, location.pathname, navigate, currentUser]);
 
   const handleVote = async (postId: number, type: "upvote" | "downvote") => {
+    setActionError(null);
     if (!currentUser) {
       showToast("Please sign in to vote.", "warning");
       return;
@@ -324,7 +328,8 @@ const ProfilePage: React.FC = () => {
           ),
         );
       } catch {}
-    } catch {
+    } catch (err: any) {
+      setActionError("Failed to update vote: " + (err.message || ""));
       const targetId = userIdParam || currentUser?.user_id || "";
       const postsRes = await getPostsByUserId(targetId);
       setUserPosts(((postsRes as any).posts ?? []) as PostWithVote[]);
@@ -333,7 +338,9 @@ const ProfilePage: React.FC = () => {
 
   const submitChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
+    setActionError(null);
     if (!currentPassword || !newPassword) {
+      setActionError("Please fill both password fields.");
       showToast("Please fill both password fields.", "warning");
       return;
     }
@@ -346,13 +353,16 @@ const ProfilePage: React.FC = () => {
       setNewPassword("");
       showToast("Password changed.", "success");
     } else {
+      setActionError(res.message || "Failed to change password");
       showToast(res.message || "Failed to change password", "error");
     }
   };
 
   const submitDeleteAccount = async (e: React.FormEvent) => {
     e.preventDefault();
+    setActionError(null);
     if (!deletePwd) {
+      setActionError("Please enter your password to confirm.");
       showToast("Please enter your password to confirm.", "warning");
       return;
     }
@@ -366,6 +376,7 @@ const ProfilePage: React.FC = () => {
     if (res.success) {
       navigate("/signout");
     } else {
+      setActionError(res.message || "Failed to delete account");
       showToast(res.message || "Failed to delete account", "error");
     }
   };
@@ -376,7 +387,6 @@ const ProfilePage: React.FC = () => {
         Loading profile...
       </div>
     );
-
   if (error || !profile) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 p-4">
@@ -397,41 +407,46 @@ const ProfilePage: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-50 py-10">
       <div className="max-w-4xl mx-auto px-2 sm:px-4">
+        {actionError && (
+          <div className="mb-4 p-3 text-center bg-red-50 border border-red-500 rounded text-red-700 font-bold">
+            {actionError}
+          </div>
+        )}
         <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
           <div className="h-32 bg-linear-to-r from-blue-600 to-indigo-700 shadow-inner"></div>
-
           <div className="px-4 sm:px-8 pb-8">
             <div className="relative flex flex-col sm:flex-row justify-between items-end -mt-10 sm:-mt-12 mb-6 gap-4">
               <div className="p-1.5 bg-white rounded-2xl shadow-md border border-gray-100">
-                <div className="w-20 h-20 sm:w-32 sm:h-32 bg-blue-50 rounded-xl flex items-center justify-center text-3xl sm:text-5xl font-bold text-blue-600 uppercase border-2 border-blue-100">
+                <div
+                  className="w-20 h-20 sm:w-32 sm:h-32 bg-blue-50 rounded-xl flex items-center justify-center text-3xl sm:text-5xl font-bold text-blue-600 uppercase border-2 border-blue-100"
+                  style={{ userSelect: "none" }}
+                >
                   {profile.username.charAt(0)}
                 </div>
               </div>
-
               {isOwnProfile && (
                 <div className="flex flex-col sm:flex-row gap-2">
                   <button
                     onClick={openEditProfile}
-                    className="px-4 py-2.5 bg-gray-900 text-white text-sm font-bold rounded-xl hover:bg-gray-800 transition shadow-lg"
+                    className="px-4 py-2.5 bg-gray-900 text-white text-sm font-bold rounded-xl hover:bg-gray-800 transition shadow-lg cursor-pointer"
                   >
                     Edit Profile
                   </button>
                   <button
                     onClick={() => setIsPasswordOpen(true)}
-                    className="px-4 py-2.5 bg-blue-600 text-white text-sm font-bold rounded-xl hover:bg-blue-700 transition shadow-lg"
+                    className="px-4 py-2.5 bg-blue-600 text-white text-sm font-bold rounded-xl hover:bg-blue-700 transition shadow-lg cursor-pointer"
                   >
                     Change Password
                   </button>
                   <button
                     onClick={() => setIsDeleteOpen(true)}
-                    className="px-4 py-2.5 bg-red-600 text-white text-sm font-bold rounded-xl hover:bg-red-700 transition shadow-lg"
+                    className="px-4 py-2.5 bg-red-600 text-white text-sm font-bold rounded-xl hover:bg-red-700 transition shadow-lg cursor-pointer"
                   >
                     Delete Account
                   </button>
                 </div>
               )}
             </div>
-
             <div className="space-y-1">
               <h1 className="text-2xl font-extrabold text-gray-900">
                 {profile.first_name} {profile.last_name}
@@ -441,7 +456,6 @@ const ProfilePage: React.FC = () => {
                 {profile.username}
               </p>
             </div>
-
             <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6 pt-8 border-t border-gray-100">
               <div className="flex flex-col gap-1">
                 <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
@@ -475,7 +489,6 @@ const ProfilePage: React.FC = () => {
                 </span>
               </div>
             </div>
-
             {(isOwnProfile || currentUser?.is_admin) && (
               <div className="mt-6 flex items-center gap-2 text-xs font-bold text-blue-600 bg-blue-50 px-4 py-2 rounded-full w-fit">
                 <span>📧 Verified Email:</span>
@@ -484,7 +497,6 @@ const ProfilePage: React.FC = () => {
             )}
           </div>
         </div>
-
         {isEditOpen && (
           <form
             onSubmit={submitEditProfile}
@@ -564,12 +576,16 @@ const ProfilePage: React.FC = () => {
                   setIsEditOpen(false);
                   setUniSuggestions([]);
                   setShowUniSuggestions(false);
+                  setActionError(null);
                 }}
                 className="px-4 py-2 text-xs font-bold text-gray-500"
               >
                 Cancel
               </button>
-              <button className="px-4 py-2 bg-blue-600 text-white rounded-lg text-xs font-bold hover:bg-blue-700">
+              <button
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg text-xs font-bold hover:bg-blue-700 cursor-pointer"
+                type="submit"
+              >
                 Save
               </button>
             </div>
@@ -610,7 +626,13 @@ const ProfilePage: React.FC = () => {
               </button>
               <button
                 disabled={pwdLoading}
-                className={`px-4 py-2 bg-blue-600 text-white rounded-lg text-xs font-bold hover:bg-blue-700 ${pwdLoading ? "opacity-60 cursor-not-allowed" : ""}`}
+                style={
+                  pwdLoading
+                    ? { cursor: "not-allowed", pointerEvents: "none" }
+                    : { cursor: "pointer" }
+                }
+                className={`px-4 py-2 bg-blue-600 text-white rounded-lg text-xs font-bold hover:bg-blue-700
+                  ${pwdLoading ? "opacity-60" : ""}`}
               >
                 {pwdLoading ? "Changing..." : "Change Password"}
               </button>
@@ -646,7 +668,14 @@ const ProfilePage: React.FC = () => {
               </button>
               <button
                 disabled={deleteLoading}
-                className={`px-4 py-2 bg-red-600 text-white rounded-lg text-xs font-bold hover:bg-red-700 ${deleteLoading ? "opacity-60 cursor-not-allowed" : ""}`}
+                style={
+                  deleteLoading
+                    ? { cursor: "not-allowed", pointerEvents: "none" }
+                    : { cursor: "pointer" }
+                }
+                className={`px-4 py-2 bg-red-600 text-white rounded-lg text-xs font-bold hover:bg-red-700 ${
+                  deleteLoading ? "opacity-60" : ""
+                }`}
               >
                 {deleteLoading ? "Deleting..." : "Delete Account"}
               </button>
@@ -693,7 +722,7 @@ const ProfilePage: React.FC = () => {
                         e.stopPropagation();
                         navigate(`/forums/${forumId}`);
                       }}
-                      className="px-2 py-1.5 text-[10px] font-bold rounded bg-blue-50 text-blue-700 border border-blue-100 hover:bg-blue-100 transition"
+                      className="px-2 py-1.5 text-[10px] font-bold rounded bg-blue-50 text-blue-700 border border-blue-100 hover:bg-blue-100 transition cursor-pointer"
                       title="View forum"
                     >
                       {forumMeta?.title ?? "Forum"}
@@ -712,7 +741,19 @@ const ProfilePage: React.FC = () => {
                           e.stopPropagation();
                           handleVote(post.id as number, "upvote");
                         }}
-                        className={`px-3 py-1.5 hover:bg-blue-200 transition font-bold text-xs ${upActive ? "text-blue-600" : "text-blue-400 hover:text-blue-700"}`}
+                        className={`px-3 py-1.5 font-bold text-xs transition ${
+                          upActive ? "text-blue-600" : "text-blue-400"
+                        } hover:bg-blue-200 ${
+                          currentUser
+                            ? "hover:text-blue-700 cursor-pointer"
+                            : "cursor-not-allowed opacity-60"
+                        }`}
+                        disabled={!currentUser}
+                        style={
+                          !currentUser
+                            ? { cursor: "not-allowed", pointerEvents: "none" }
+                            : { cursor: "pointer" }
+                        }
                         title={upActive ? "Remove upvote" : "Upvote"}
                       >
                         ▲
@@ -725,7 +766,19 @@ const ProfilePage: React.FC = () => {
                           e.stopPropagation();
                           handleVote(post.id as number, "downvote");
                         }}
-                        className={`px-3 py-1.5 hover:bg-blue-200 transition font-bold text-xs ${downActive ? "text-red-500" : "text-blue-400 hover:text-red-500"}`}
+                        className={`px-3 py-1.5 font-bold text-xs transition ${
+                          downActive ? "text-red-500" : "text-blue-400"
+                        } hover:bg-blue-200 ${
+                          currentUser
+                            ? "hover:text-red-500 cursor-pointer"
+                            : "cursor-not-allowed opacity-60"
+                        }`}
+                        disabled={!currentUser}
+                        style={
+                          !currentUser
+                            ? { cursor: "not-allowed", pointerEvents: "none" }
+                            : { cursor: "pointer" }
+                        }
                         title={downActive ? "Remove downvote" : "Downvote"}
                       >
                         ▼
@@ -746,4 +799,3 @@ const ProfilePage: React.FC = () => {
 };
 
 export default ProfilePage;
-

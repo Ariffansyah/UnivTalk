@@ -4,8 +4,8 @@ import {
   getForumById,
   joinForum,
   leaveForum,
-  getForumMembers,
   deleteForum,
+  getForumMembers,
   getCategories,
   type Forum,
 } from "../services/api/forums";
@@ -49,10 +49,6 @@ const ForumDetail: React.FC = () => {
   const [joinLoading, setJoinLoading] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const [isEditOpen, setIsEditOpen] = useState(false);
-  const [editTitle, setEditTitle] = useState("");
-  const [editDescription, setEditDescription] = useState("");
-
   const fetchPosts = async () => {
     if (!forumId) return;
     try {
@@ -66,8 +62,8 @@ const ForumDetail: React.FC = () => {
         created_at: p.created_at ?? p.CreatedAt,
       }));
       setPosts(mapped);
-    } catch (err) {
-      console.error("Failed fetching posts:", err);
+    } catch (err: any) {
+      setError("Failed to fetch posts: " + (err.message || "Unknown error"));
       showToast("Failed to fetch posts", "error");
     }
   };
@@ -80,8 +76,6 @@ const ForumDetail: React.FC = () => {
         const forumRes = await getForumById(forumId);
         if (forumRes && forumRes.forum) {
           setForum(forumRes.forum);
-          setEditTitle(forumRes.forum.title || "");
-          setEditDescription(forumRes.forum.description || "");
         } else {
           setError("Forum not found");
           setLoading(false);
@@ -93,7 +87,11 @@ const ForumDetail: React.FC = () => {
           const cats =
             catRes && (catRes as any).data ? (catRes as any).data : [];
           setCategories(cats);
-        } catch {}
+        } catch (err: any) {
+          setError(
+            "Failed to fetch categories: " + (err.message || "Unknown error"),
+          );
+        }
         try {
           const membersRes = await getForumMembers(forumId);
           if (membersRes && membersRes.forum_members) {
@@ -111,12 +109,14 @@ const ForumDetail: React.FC = () => {
               }
             }
           }
-        } catch (err) {
-          console.error("Failed fetching members:", err);
+        } catch (err: any) {
+          setError(
+            "Failed to fetch forum members: " +
+              (err.message || "Unknown error"),
+          );
         }
-      } catch (err) {
-        console.error(err);
-        setError("Failed to load data");
+      } catch (err: any) {
+        setError("Failed to load data: " + (err.message || "Unknown error"));
       } finally {
         setLoading(false);
       }
@@ -151,8 +151,10 @@ const ForumDetail: React.FC = () => {
         setRealMemberCount((prev) => prev + 1);
         showToast("Joined community.", "success");
       }
-    } catch (err) {
-      console.error("Join/Leave error:", err);
+    } catch (err: any) {
+      setError(
+        "Failed to update membership: " + (err.message || "Unknown error"),
+      );
       showToast("Failed to update membership. Please try again.", "error");
     } finally {
       setJoinLoading(false);
@@ -219,8 +221,8 @@ const ForumDetail: React.FC = () => {
     try {
       await votePost(postId, action);
       await fetchPosts();
-    } catch (err) {
-      console.error("Vote failed:", err);
+    } catch (err: any) {
+      setError("Failed to vote: " + (err.message || "Unknown error"));
       await fetchPosts();
       showToast("Failed to vote. Please try again.", "error");
     }
@@ -234,45 +236,9 @@ const ForumDetail: React.FC = () => {
       await deleteForum(forumId);
       showToast("Forum deleted.", "success");
       navigate("/forums");
-    } catch (err) {
-      console.error("Delete forum failed:", err);
+    } catch (err: any) {
+      setError("Failed to delete forum: " + (err.message || "Unknown error"));
       showToast("Failed to delete forum", "error");
-    }
-  };
-
-  const handleOpenEditForum = () => {
-    if (!forum) return;
-    setEditTitle(forum.title || "");
-    setEditDescription(forum.description || "");
-    setIsEditOpen(true);
-  };
-
-  const handleSubmitEditForum = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!forumId) return;
-    try {
-      const res = await fetch(
-        `${import.meta.env.VITE_API_URL}/forums/${forumId}`,
-        {
-          method: "PUT",
-          credentials: "include",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            title: editTitle,
-            description: editDescription,
-          }),
-        },
-      );
-      if (!res.ok) throw new Error("Failed to update forum");
-      setIsEditOpen(false);
-      const forumRes = await getForumById(forumId);
-      if (forumRes && forumRes.forum) {
-        setForum(forumRes.forum);
-        showToast("Forum updated.", "success");
-      }
-    } catch (err) {
-      console.error("Update forum failed:", err);
-      showToast("Failed to update forum", "error");
     }
   };
 
@@ -289,9 +255,17 @@ const ForumDetail: React.FC = () => {
 
   if (loading)
     return <div className="p-10 text-center text-gray-600">Loading...</div>;
-  if (error || !forum)
+  if (error)
     return (
-      <div className="p-10 text-center text-red-500 font-medium">{error}</div>
+      <div className="p-10 text-center text-red-600 bg-red-50 rounded font-bold border border-red-200">
+        {error}
+      </div>
+    );
+  if (!forum)
+    return (
+      <div className="p-10 text-center text-red-600 bg-red-50 rounded font-bold border border-red-200">
+        Forum not found.
+      </div>
     );
 
   const forumCreatedAt = forum.created_at || (forum as any).CreatedAt;
@@ -308,7 +282,10 @@ const ForumDetail: React.FC = () => {
         <div className="bg-white rounded-xl shadow-sm border border-blue-100 p-6 mb-8 relative">
           <div className="flex flex-col sm:flex-row items-start sm:items-end justify-between gap-4">
             <div className="flex items-end gap-5">
-              <div className="w-20 h-20 sm:w-28 sm:h-28 bg-white rounded-xl p-1 shadow-md">
+              <div
+                className="w-20 h-20 sm:w-28 sm:h-28 bg-white rounded-xl p-1 shadow-md select-none"
+                style={{ userSelect: "none" }}
+              >
                 <div className="w-full h-full bg-blue-50 rounded-lg flex items-center justify-center text-3xl sm:text-5xl font-bold text-blue-600">
                   {forum.title.charAt(0).toUpperCase()}
                 </div>
@@ -324,19 +301,16 @@ const ForumDetail: React.FC = () => {
               <div className="flex flex-wrap items-center gap-3">
                 {hasAdminPower ? (
                   <>
-                    <div className="px-4 py-2 bg-yellow-50 text-yellow-700 font-bold rounded-lg border border-yellow-200 flex items-center gap-2 cursor-default">
+                    <div className="px-4 py-2 bg-yellow-50 text-yellow-700 font-bold rounded-lg border border-yellow-200 flex items-center gap-2 cursor-default select-none">
                       <span>👑</span>{" "}
                       {user.is_admin ? "System Admin" : "Forum Admin"}
                     </div>
-                    <button
-                      onClick={handleOpenEditForum}
-                      className="px-4 sm:px-6 py-2 bg-gray-900 text-white font-semibold rounded-lg hover:bg-gray-800 transition shadow-sm"
-                    >
+                    <button className="px-4 sm:px-6 py-2 bg-gray-900 text-white font-semibold rounded-lg hover:bg-gray-800 transition shadow-sm cursor-pointer">
                       Edit Forum
                     </button>
                     <button
                       onClick={handleDeleteForum}
-                      className="px-4 sm:px-6 py-2 bg-red-600 text-white font-semibold rounded-lg hover:bg-red-700 transition shadow-sm"
+                      className="px-4 sm:px-6 py-2 bg-red-600 text-white font-semibold rounded-lg hover:bg-red-700 transition shadow-sm cursor-pointer"
                     >
                       Delete Forum
                     </button>
@@ -349,7 +323,8 @@ const ForumDetail: React.FC = () => {
                       isMember
                         ? "bg-white border-2 border-red-500 text-red-500 hover:bg-red-50"
                         : "bg-blue-600 text-white hover:bg-blue-700 hover:shadow-md"
-                    } ${joinLoading ? "opacity-70 cursor-wait" : ""}`}
+                    } ${joinLoading ? "opacity-70 cursor-not-allowed" : "cursor-pointer"}`}
+                    style={joinLoading ? { pointerEvents: "none" } : {}}
                   >
                     {joinLoading
                       ? "Processing..."
@@ -401,40 +376,16 @@ const ForumDetail: React.FC = () => {
           </div>
         </div>
 
-        {isEditOpen && (
-          <form
-            onSubmit={handleSubmitEditForum}
-            className="bg-white p-6 rounded-xl border border-blue-100 shadow-sm mb-8"
-          >
-            <h3 className="text-sm font-bold text-gray-800 mb-3">Edit Forum</h3>
-            <input
-              className="w-full p-2 mb-2 bg-gray-50 border border-blue-100 rounded-lg outline-none focus:ring-2 focus:ring-blue-400"
-              value={editTitle}
-              onChange={(e) => setEditTitle(e.target.value)}
-              placeholder="Title"
-            />
-            <textarea
-              className="w-full p-2 mb-2 bg-gray-50 border border-blue-100 rounded-lg outline-none focus:ring-2 focus:ring-blue-400"
-              rows={4}
-              value={editDescription}
-              onChange={(e) => setEditDescription(e.target.value)}
-              placeholder="Description"
-            />
-            <div className="flex gap-2 justify-end">
-              <button
-                type="button"
-                onClick={() => setIsEditOpen(false)}
-                className="text-xs font-bold text-gray-500"
-              >
-                Cancel
-              </button>
-              <button className="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-bold hover:bg-blue-700">
-                Save
-              </button>
-            </div>
-          </form>
-        )}
-
+        <div className="md:hidden w-full pb-4">
+          {user && (
+            <button
+              onClick={() => setIsModalOpen(true)}
+              className="w-full text-center bg-blue-600 text-white font-bold py-3 rounded-xl hover:bg-blue-700 transition shadow cursor-pointer"
+            >
+              + New Post
+            </button>
+          )}
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 pb-10">
           <div className="md:col-span-2 space-y-6">
             {sortedPosts.length === 0 ? (
@@ -462,12 +413,21 @@ const ForumDetail: React.FC = () => {
                     className="bg-white p-6 rounded-xl border border-blue-100 shadow-sm hover:shadow-lg hover:border-blue-300 hover:bg-blue-50 transition"
                   >
                     <div className="flex items-center gap-2 mb-3">
-                      <div className="w-6 h-6 rounded-full bg-blue-200 flex items-center justify-center text-[10px] text-blue-700 font-bold uppercase">
+                      <div
+                        className="w-6 h-6 rounded-full bg-blue-200 flex items-center justify-center text-[10px] text-blue-700 font-bold uppercase select-none"
+                        style={{ userSelect: "none" }}
+                      >
                         {authorUsername.charAt(0)}
                       </div>
                       <span
-                        className="text-sm font-semibold text-gray-700 hover:text-blue-600 hover:underline cursor-pointer transition"
+                        className="text-sm font-semibold text-gray-700 hover:text-blue-600 hover:underline cursor-pointer"
                         onClick={() => navigate(`/profile/${post.user_id}`)}
+                        style={{
+                          userSelect:
+                            authorUsername === "Anonymous User"
+                              ? "none"
+                              : undefined,
+                        }}
                       >
                         {authorUsername}
                       </span>
@@ -505,26 +465,26 @@ const ForumDetail: React.FC = () => {
                           onClick={() =>
                             handleVote(post.id as number, "upvote")
                           }
-                          className={`px-3 py-1.5 hover:bg-blue-200 transition font-bold ${upActive ? "text-blue-600" : "text-blue-400 hover:text-blue-700"}`}
+                          className={`px-3 py-1.5 hover:bg-blue-200 transition font-bold cursor-pointer ${upActive ? "text-blue-600" : "text-blue-400 hover:text-blue-700"}`}
                           title={upActive ? "Remove upvote" : "Upvote"}
                         >
                           ▲
                         </button>
-                        <span className="text-sm font-bold text-blue-900 px-1">
+                        <span className="text-sm font-bold text-blue-900 px-1 select-none">
                           {voteCount}
                         </span>
                         <button
                           onClick={() =>
                             handleVote(post.id as number, "downvote")
                           }
-                          className={`px-3 py-1.5 hover:bg-blue-200 transition font-bold ${downActive ? "text-red-500" : "text-blue-400 hover:text-red-500"}`}
+                          className={`px-3 py-1.5 hover:bg-blue-200 transition font-bold cursor-pointer ${downActive ? "text-red-500" : "text-blue-400 hover:text-red-500"}`}
                           title={downActive ? "Remove downvote" : "Downvote"}
                         >
                           ▼
                         </button>
                       </div>
                       <button
-                        className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-50 rounded-lg transition"
+                        className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-50 rounded-lg transition cursor-pointer"
                         onClick={() => navigate(`/posts/${post.id}`)}
                       >
                         <span>💬</span> <span>Comment</span>
@@ -540,7 +500,7 @@ const ForumDetail: React.FC = () => {
               {user && (
                 <button
                   onClick={() => setIsModalOpen(true)}
-                  className="block w-full text-center bg-blue-600 text-white font-bold py-3 rounded-xl hover:bg-blue-700 transition shadow"
+                  className="block w-full text-center bg-blue-600 text-white font-bold py-3 rounded-xl hover:bg-blue-700 transition shadow cursor-pointer"
                 >
                   + New Post
                 </button>
@@ -562,4 +522,3 @@ const ForumDetail: React.FC = () => {
 };
 
 export default ForumDetail;
-

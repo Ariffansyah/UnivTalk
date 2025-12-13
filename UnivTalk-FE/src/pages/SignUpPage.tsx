@@ -28,11 +28,12 @@ const SignUpPage: React.FC = () => {
   const [selectedUniv, setSelectedUniv] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string>("");
+  const [fieldErrors, setFieldErrors] = useState<{ [key: string]: string }>({});
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const inputRef = useRef<HTMLInputElement>(null);
-  const debounceTimer = useRef<any>(null);
+  const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (!form.university.trim() || selectedUniv) {
@@ -41,16 +42,17 @@ const SignUpPage: React.FC = () => {
       return;
     }
 
-    setLoadingUniv(true);
     if (debounceTimer.current) clearTimeout(debounceTimer.current);
 
     debounceTimer.current = setTimeout(async () => {
+      setLoadingUniv(true);
       try {
         const result = await fetchUniversitySuggestions(form.university);
         setSuggestions(result);
         setShowSuggestions(true);
       } catch (err) {
-        console.error(err);
+        setSuggestions([]);
+        setShowSuggestions(true);
       } finally {
         setLoadingUniv(false);
       }
@@ -67,61 +69,69 @@ const SignUpPage: React.FC = () => {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
     if (errorMsg) setErrorMsg("");
+    setFieldErrors((prev) => ({ ...prev, [name]: "" }));
   };
 
   const handleUniversityInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSelectedUniv(false);
     setForm((prev) => ({ ...prev, university: e.target.value }));
+    setFieldErrors((prev) => ({ ...prev, university: "" }));
   };
 
   const handleSuggestionClick = (univ: string) => {
     setForm((prev) => ({ ...prev, university: univ }));
     setSelectedUniv(true);
     setShowSuggestions(false);
+    setFieldErrors((prev) => ({ ...prev, university: "" }));
   };
 
   const validateEmail = (email: string) =>
     /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-  const specialChars = /[!@#$%^&*(),.?":{}|<>]/;
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setErrorMsg("");
+    let errObj: { [key: string]: string } = {};
 
-    if (form.username.length < 8)
-      return setErrorMsg("Username must be at least 8 characters.");
-    if (form.firstName.length < 2 || form.lastName.length < 2)
-      return setErrorMsg("Name fields must be at least 2 characters.");
+    if (!form.firstName || form.firstName.length < 2)
+      errObj.firstName = "First name is required (at least 2 characters).";
+    if (!form.lastName || form.lastName.length < 2)
+      errObj.lastName = "Last name is required (at least 2 characters).";
+    if (!form.username || form.username.length < 8)
+      errObj.username =
+        "Username must be at least 8 characters (letters/numbers only, no spaces).";
     if (!validateEmail(form.email))
-      return setErrorMsg("Please enter a valid email address.");
-    if (form.password.length < 8)
-      return setErrorMsg("Password must be at least 8 characters.");
-
-    if (
-      !specialChars.test(form.password) ||
-      !/\d/.test(form.password) ||
-      !/[A-Z]/.test(form.password)
-    ) {
-      return setErrorMsg(
-        "Password must include an uppercase letter, a number, and a special character.",
-      );
-    }
-
+      errObj.email = "Please enter a valid email address.";
+    if (!form.password || form.password.length < 8)
+      errObj.password = "Password must be at least 8 characters.";
+    else if (!/[A-Z]/.test(form.password))
+      errObj.password = "Password must contain at least one uppercase letter.";
+    else if (!/[a-z]/.test(form.password))
+      errObj.password = "Password must contain at least one lowercase letter.";
+    else if (!/\d/.test(form.password))
+      errObj.password = "Password must contain at least one number.";
+    else if (!/[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]+/.test(form.password))
+      errObj.password =
+        "Password must contain at least one special character (e.g. @#$%).";
     if (form.password !== form.confirmPassword)
-      return setErrorMsg("Passwords do not match.");
-
+      errObj.confirmPassword = "Passwords do not match.";
     if (
       !selectedUniv &&
       !suggestions.some(
         (s) => s.toLowerCase() === form.university.toLowerCase(),
       )
     ) {
-      return setErrorMsg(
-        "Please select a valid university from the suggestions.",
-      );
+      errObj.university = "Please select your university from the suggestions.";
+    }
+
+    setFieldErrors(errObj);
+
+    if (Object.keys(errObj).length > 0) {
+      setErrorMsg("Please review the highlighted fields below.");
+      return;
     }
 
     setIsSubmitting(true);
+    setErrorMsg("");
     try {
       const response = await signUp(
         form.username,
@@ -132,7 +142,6 @@ const SignUpPage: React.FC = () => {
         form.university,
         form.status,
       );
-
       if (response.success) {
         showToast("Registration successful! Please sign in.", "success");
         navigate("/signin");
@@ -140,17 +149,14 @@ const SignUpPage: React.FC = () => {
         setErrorMsg(response.message);
       }
     } catch (err: any) {
-      setErrorMsg(err.message || "An unexpected error occurred.");
+      setErrorMsg(err.message || "Registration failed. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <div
-      className="min-h-screen flex items-center justify-center p-4"
-      style={{ backgroundColor: "#2563eb", backgroundImage: "none" }}
-    >
+    <div className="min-h-screen flex items-center justify-center p-4 bg-blue-600">
       <div
         className="absolute inset-0 -z-10"
         style={{
@@ -160,11 +166,20 @@ const SignUpPage: React.FC = () => {
       ></div>
       <form
         onSubmit={handleSubmit}
-        className="w-full max-w-lg  p-8max-w-md mx-auto bg-white p-8 rounded-xl shadow-lg border border-gray-200"
+        className="w-full bg-white rounded-xl shadow-lg border border-gray-200 py-8 px-4 sm:px-10 md:px-14 max-w-md md:max-w-xl lg:max-w-2xl mx-auto"
         style={{ position: "relative" }}
+        noValidate
       >
-        <div className="text-center mb-8">
-          <img src={logo} alt="UnivTalk Logo" className="w-32 mx-auto" />
+        <div
+          className="text-center mb-8 select-none"
+          style={{ userSelect: "none" }}
+        >
+          <img
+            src={logo}
+            alt="UnivTalk Logo"
+            className="w-32 mx-auto"
+            draggable={false}
+          />
           <h2 className="text-2xl font-semibold text-gray-700">
             Create Account
           </h2>
@@ -172,9 +187,8 @@ const SignUpPage: React.FC = () => {
             Join our university community
           </p>
         </div>
-
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-4 mb-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
             <div>
               <label className="block text-gray-700 font-semibold mb-2">
                 First Name
@@ -184,11 +198,16 @@ const SignUpPage: React.FC = () => {
                 name="firstName"
                 value={form.firstName}
                 onChange={handleChange}
-                required
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition ${fieldErrors.firstName ? "border-red-400" : "border-gray-300"}`}
                 minLength={2}
-                placeholder="First name"
+                placeholder="e.g. John"
               />
+              <p className="text-xs text-gray-400 mt-1">
+                At least 2 characters, letters and spaces only.
+              </p>
+              {fieldErrors.firstName && (
+                <p className="text-xs text-red-500">{fieldErrors.firstName}</p>
+              )}
             </div>
             <div>
               <label className="block text-gray-700 font-semibold mb-2">
@@ -199,14 +218,18 @@ const SignUpPage: React.FC = () => {
                 name="lastName"
                 value={form.lastName}
                 onChange={handleChange}
-                required
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition ${fieldErrors.lastName ? "border-red-400" : "border-gray-300"}`}
                 minLength={2}
-                placeholder="Last name"
+                placeholder="e.g. Doe"
               />
+              <p className="text-xs text-gray-400 mt-1">
+                At least 2 characters, letters and spaces only.
+              </p>
+              {fieldErrors.lastName && (
+                <p className="text-xs text-red-500">{fieldErrors.lastName}</p>
+              )}
             </div>
           </div>
-
           <div className="mb-5">
             <label className="block text-gray-700 font-semibold mb-2">
               Username
@@ -216,29 +239,38 @@ const SignUpPage: React.FC = () => {
               name="username"
               value={form.username}
               onChange={handleChange}
-              required
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+              className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition ${fieldErrors.username ? "border-red-400" : "border-gray-300"}`}
               minLength={8}
               placeholder="At least 8 characters"
             />
+            <p className="text-xs text-gray-400 mt-1">
+              At least 8 characters (letters and numbers only, no spaces).
+            </p>
+            {fieldErrors.username && (
+              <p className="text-xs text-red-500">{fieldErrors.username}</p>
+            )}
           </div>
-
           <div className="mb-5">
             <label className="block text-gray-700 font-semibold mb-2">
-              Email Addres
+              Email Address
             </label>
             <input
               type="email"
               name="email"
               value={form.email}
               onChange={handleChange}
-              required
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+              className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition ${fieldErrors.email ? "border-red-400" : "border-gray-300"}`}
               placeholder="name@university.edu"
             />
+            <p className="text-xs text-gray-400 mt-1">
+              Use your valid student email address (e.g. name@student.univ.edu).
+            </p>
+            {fieldErrors.email && (
+              <p className="text-xs text-red-500">{fieldErrors.email}</p>
+            )}
           </div>
 
-          <div className="grid grid-cols-2 gap-4 mb-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
             <div>
               <label className="block text-gray-700 font-semibold mb-2">
                 Password
@@ -249,10 +281,9 @@ const SignUpPage: React.FC = () => {
                   name="password"
                   value={form.password}
                   onChange={handleChange}
-                  required
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition ${fieldErrors.password ? "border-red-400" : "border-gray-300"}`}
                   minLength={8}
-                  placeholder="At least 8 chars"
+                  placeholder="Min. 8 chars w/ upper, lower, number, symbol"
                 />
                 <button
                   type="button"
@@ -266,6 +297,13 @@ const SignUpPage: React.FC = () => {
                   )}
                 </button>
               </div>
+              <p className="text-xs text-gray-400 mt-1">
+                At least 8 characters, includes uppercase and lowercase letters,
+                a number, and a symbol.
+              </p>
+              {fieldErrors.password && (
+                <p className="text-xs text-red-500">{fieldErrors.password}</p>
+              )}
             </div>
             <div>
               <label className="block text-gray-700 font-semibold mb-2">
@@ -277,8 +315,7 @@ const SignUpPage: React.FC = () => {
                   name="confirmPassword"
                   value={form.confirmPassword}
                   onChange={handleChange}
-                  required
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition pr-10"
+                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition ${fieldErrors.confirmPassword ? "border-red-400" : "border-gray-300"}`}
                   minLength={8}
                   placeholder="Repeat password"
                 />
@@ -294,6 +331,11 @@ const SignUpPage: React.FC = () => {
                   )}
                 </button>
               </div>
+              {fieldErrors.confirmPassword && (
+                <p className="text-xs text-red-500">
+                  {fieldErrors.confirmPassword}
+                </p>
+              )}
             </div>
           </div>
 
@@ -309,10 +351,12 @@ const SignUpPage: React.FC = () => {
               value={form.university}
               onChange={handleUniversityInput}
               onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
-              required
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-              placeholder="Search your university..."
+              className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition ${fieldErrors.university ? "border-red-400" : "border-gray-300"}`}
+              placeholder="Type university, pick from suggestions"
             />
+            {fieldErrors.university && (
+              <p className="text-xs text-red-500">{fieldErrors.university}</p>
+            )}
             {showSuggestions && (
               <ul className="absolute z-50 bg-white border border-gray-300 w-full rounded-lg shadow-xl mt-1 max-h-48 overflow-y-auto">
                 {loadingUniv ? (
@@ -337,7 +381,6 @@ const SignUpPage: React.FC = () => {
               </ul>
             )}
           </div>
-
           <div>
             <label className="block text-gray-700 font-semibold mb-2">
               Student Status
@@ -355,15 +398,24 @@ const SignUpPage: React.FC = () => {
         </div>
 
         {errorMsg && (
-          <div className="mt-6 p-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg flex items-center gap-2 animate-pulse">
-            <span>⚠️</span> {errorMsg}
+          <div className="mt-6 p-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg flex items-center gap-2 animate-pulse font-bold">
+            {errorMsg}
           </div>
         )}
 
         <button
           type="submit"
           disabled={isSubmitting}
-          className={`w-full mt-8 bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700 transition-all shadow-md ${isSubmitting ? "opacity-70 cursor-not-allowed" : ""}`}
+          className={`w-full mt-8 bg-blue-600 text-white font-bold py-3 rounded-lg transition-all shadow-md ${
+            isSubmitting
+              ? "opacity-70 cursor-not-allowed pointer-events-none"
+              : "hover:bg-blue-700 cursor-pointer"
+          }`}
+          style={
+            isSubmitting
+              ? { cursor: "not-allowed", pointerEvents: "none" }
+              : { cursor: "pointer" }
+          }
         >
           {isSubmitting ? "Creating Account..." : "Register"}
         </button>
@@ -385,4 +437,3 @@ const SignUpPage: React.FC = () => {
 };
 
 export default SignUpPage;
-

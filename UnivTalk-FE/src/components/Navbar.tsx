@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import logo from "../assets/LogoNoName.png";
 
-<img src={logo} />
+<img src={logo} />;
 
 const Navbar: React.FC = () => {
   const { user, signOut } = useAuth();
@@ -33,19 +33,19 @@ const Navbar: React.FC = () => {
     <nav className="bg-white border-b border-gray-200 sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
-<div className="flex items-center">
-  <Link to="/" className="flex items-center gap-2">
-    <img
-      src={logo}
-      alt="UnivTalk Logo"
-      className="w-15 h-15 object-contain"
-    />
-<span className="logo-text text-xl">
-  <span className="logo-univ">Univ</span>
-  <span className="logo-talk">Talk</span>
-</span>
-  </Link>
-</div>
+          <div className="flex items-center">
+            <Link to="/" className="flex items-center gap-2">
+              <img
+                src={logo}
+                alt="UnivTalk Logo"
+                className="w-15 h-15 object-contain"
+              />
+              <span className="logo-text text-xl">
+                <span className="logo-univ">Univ</span>
+                <span className="logo-talk">Talk</span>
+              </span>
+            </Link>
+          </div>
 
           <div className="flex items-center">
             {user ? (
@@ -102,7 +102,13 @@ const Navbar: React.FC = () => {
                     >
                       Create Forum
                     </Link>
-
+                    <Link
+                      to="/credits"
+                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      onClick={() => setIsDropdownOpen(false)}
+                    >
+                      Credits
+                    </Link>
                     <button
                       onClick={handleLogout}
                       className="w-full text-left block px-4 py-2 text-sm text-red-600 hover:bg-red-50"

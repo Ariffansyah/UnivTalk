@@ -24,6 +24,7 @@ const LandingPage: React.FC = () => {
   const [categories, setCategories] = useState<Category[]>([]);
   const [posts, setPosts] = useState<PostWithVote[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const formatDate = (dateString?: string) => {
     if (!dateString) return "";
@@ -43,42 +44,51 @@ const LandingPage: React.FC = () => {
   };
 
   const fetchPostsWithVotes = async () => {
-    const postRes = await getGlobalPosts();
-    const rawPosts = (postRes as any).posts ?? [];
-    const enriched: PostWithVote[] = await Promise.all(
-      rawPosts.map(async (p: any) => {
-        let upvotes = p.upvotes ?? 0;
-        let downvotes = p.downvotes ?? 0;
-        let myVote: number | null = p.my_vote ?? null;
-        try {
-          const counts = await getPostVotes(p.id);
-          upvotes = counts.up_votes ?? upvotes ?? 0;
-          downvotes = counts.down_votes ?? downvotes ?? 0;
-        } catch {}
-        if (user) {
+    try {
+      const postRes = await getGlobalPosts();
+      const rawPosts = (postRes as any).posts ?? [];
+      const enriched: PostWithVote[] = await Promise.all(
+        rawPosts.map(async (p: any) => {
+          let upvotes = p.upvotes ?? 0;
+          let downvotes = p.downvotes ?? 0;
+          let myVote: number | null = p.my_vote ?? null;
           try {
-            const voters = await getPostVoters(p.id);
-            const me = voters.voters?.find((v) => v.user_id === user.user_id);
-            myVote = me?.value ?? myVote ?? null;
+            const counts = await getPostVotes(p.id);
+            upvotes = counts.up_votes ?? upvotes ?? 0;
+            downvotes = counts.down_votes ?? downvotes ?? 0;
           } catch {}
-        }
-        return { ...p, upvotes, downvotes, my_vote: myVote } as PostWithVote;
-      }),
-    );
-    enriched.sort((a, b) => {
-      const sa = (a.upvotes || 0) - (a.downvotes || 0);
-      const sb = (b.upvotes || 0) - (b.downvotes || 0);
-      if (sb !== sa) return sb - sa;
-      return (
-        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+          if (user) {
+            try {
+              const voters = await getPostVoters(p.id);
+              const me = voters.voters?.find((v) => v.user_id === user.user_id);
+              myVote = me?.value ?? myVote ?? null;
+            } catch {}
+          }
+          return { ...p, upvotes, downvotes, my_vote: myVote } as PostWithVote;
+        }),
       );
-    });
-    setPosts(enriched);
+      enriched.sort((a, b) => {
+        const sa = (a.upvotes || 0) - (a.downvotes || 0);
+        const sb = (b.upvotes || 0) - (b.downvotes || 0);
+        if (sb !== sa) return sb - sa;
+        return (
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        );
+      });
+      setPosts(enriched);
+    } catch (err: any) {
+      setError(
+        err?.message
+          ? `Failed to load posts: ${err.message}`
+          : "Failed to load posts. Please reload this page.",
+      );
+    }
   };
 
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
+      setError(null);
       try {
         const [forumRes, catRes] = await Promise.all([
           getForums(),
@@ -91,7 +101,12 @@ const LandingPage: React.FC = () => {
           setCategories((catRes as any).data);
         }
         await fetchPostsWithVotes();
-      } catch {
+      } catch (err: any) {
+        setError(
+          err?.message
+            ? `Failed to load: ${err.message}`
+            : "Failed to load data. Please reload this page.",
+        );
       } finally {
         setLoading(false);
       }
@@ -176,6 +191,11 @@ const LandingPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-white text-gray-800">
       <div className="max-w-7xl mx-auto py-10 px-4 sm:px-6 lg:px-8">
+        {error && (
+          <div className="bg-red-50 border-l-4 border-red-500 text-red-700 p-4 rounded mb-6 font-bold text-center">
+            {error}
+          </div>
+        )}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           <aside className="lg:col-span-3 space-y-6 order-2 lg:order-1">
             <div className="bg-white rounded-xl shadow border border-blue-200 overflow-hidden sticky top-24">
@@ -186,36 +206,47 @@ const LandingPage: React.FC = () => {
                 </h2>
               </div>
               <div className="divide-y divide-blue-50 max-h-[60vh] overflow-y-auto custom-scrollbar">
-                {forums.map((forum) => (
-                  <Link
-                    key={forum.fid}
-                    to={`/forums/${forum.fid}`}
-                    className="flex items-center gap-3 p-4 hover:bg-blue-50 transition group"
-                  >
-                    <div className="shrink-0 w-8 h-8 rounded-lg bg-blue-500 flex items-center justify-center text-white text-base font-semibold shadow group-hover:bg-blue-600 transition uppercase">
-                      {forum.title.charAt(0)}
-                    </div>
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <p className="text-sm font-semibold text-gray-800 truncate">
-                          {forum.title}
-                        </p>
-                        {forum.category_id && (
-                          <span className="text-[10px] text-blue-800 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-100">
-                            {
-                              categories.find((c) => c.id === forum.category_id)
-                                ?.name
-                            }
-                          </span>
-                        )}
+                {forums.length === 0 && !loading ? (
+                  <div className="text-center text-gray-400 py-6">
+                    Forums not found.
+                  </div>
+                ) : (
+                  forums.map((forum) => (
+                    <Link
+                      key={forum.fid}
+                      to={`/forums/${forum.fid}`}
+                      className="flex items-center gap-3 p-4 hover:bg-blue-50 transition group cursor-pointer"
+                      tabIndex={0}
+                    >
+                      <div
+                        className="shrink-0 w-8 h-8 rounded-lg bg-blue-500 flex items-center justify-center text-white text-base font-semibold shadow group-hover:bg-blue-600 transition uppercase select-none"
+                        style={{ userSelect: "none" }}
+                      >
+                        {forum.title.charAt(0)}
                       </div>
-                    </div>
-                  </Link>
-                ))}
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm font-semibold text-gray-800 truncate">
+                            {forum.title}
+                          </p>
+                          {forum.category_id && (
+                            <span className="text-[10px] text-blue-800 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-100">
+                              {
+                                categories.find(
+                                  (c) => c.id === forum.category_id,
+                                )?.name
+                              }
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </Link>
+                  ))
+                )}
               </div>
               <Link
                 to="/forums"
-                className="block text-center py-3 text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 border-t border-blue-100 transition"
+                className="block text-center py-3 text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 border-t border-blue-100 transition cursor-pointer"
               >
                 View All Forums
               </Link>
@@ -260,15 +291,20 @@ const LandingPage: React.FC = () => {
                   >
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2 text-[12px] text-blue-700 font-semibold">
-                        <div className="w-6 h-6 rounded-full bg-blue-200 flex items-center justify-center font-bold text-blue-600 uppercase border border-blue-100">
+                        <div
+                          className="w-6 h-6 rounded-full bg-blue-200 flex items-center justify-center font-bold text-blue-600 uppercase border border-blue-100 select-none"
+                          style={{ userSelect: "none" }}
+                        >
                           {authorUsername.charAt(0)}
                         </div>
                         <button
+                          type="button"
+                          tabIndex={0}
                           onClick={(e) => {
                             e.stopPropagation();
                             navigate(`/profile/${post.user_id}`);
                           }}
-                          className="hover:underline underline-offset-2"
+                          className="hover:underline underline-offset-2 cursor-pointer"
                           title="View profile"
                         >
                           @{authorUsername}
@@ -279,11 +315,13 @@ const LandingPage: React.FC = () => {
                         </span>
                       </div>
                       <button
+                        type="button"
+                        tabIndex={0}
                         onClick={(e) => {
                           e.stopPropagation();
                           navigate(`/forums/${post.forum_id}`);
                         }}
-                        className="px-2 py-1.5 text-[11px] font-bold rounded bg-yellow-100 text-yellow-800 border border-yellow-200 hover:bg-yellow-200 transition"
+                        className="px-2 py-1.5 text-[11px] font-bold rounded bg-yellow-100 text-yellow-800 border border-yellow-200 hover:bg-yellow-200 transition cursor-pointer"
                         title="View forum"
                       >
                         {forumMeta?.title ?? "Forum"}
@@ -318,31 +356,37 @@ const LandingPage: React.FC = () => {
                     <div className="flex flex-wrap items-center gap-4 border-t pt-2 border-blue-50">
                       <div className="flex items-center bg-blue-50 rounded-lg border border-blue-100 overflow-hidden">
                         <button
+                          type="button"
+                          tabIndex={0}
                           onClick={(e) => {
                             e.stopPropagation();
                             handleVote(post.id as number, "upvote");
                           }}
-                          className={`px-3 py-1.5 hover:bg-blue-200 transition font-bold ${upActive ? "text-blue-600" : "text-blue-400 hover:text-blue-700"}`}
+                          className={`px-3 py-1.5 hover:bg-blue-200 transition font-bold cursor-pointer ${upActive ? "text-blue-600" : "text-blue-400 hover:text-blue-700"}`}
                           title={upActive ? "Remove upvote" : "Upvote"}
                         >
                           ▲
                         </button>
-                        <span className="text-sm font-bold text-blue-900 px-1">
+                        <span className="text-sm font-bold text-blue-900 px-1 select-none">
                           {voteCount}
                         </span>
                         <button
+                          type="button"
+                          tabIndex={0}
                           onClick={(e) => {
                             e.stopPropagation();
                             handleVote(post.id as number, "downvote");
                           }}
-                          className={`px-3 py-1.5 hover:bg-blue-200 transition font-bold ${downActive ? "text-red-500" : "text-blue-400 hover:text-red-500"}`}
+                          className={`px-3 py-1.5 hover:bg-blue-200 transition font-bold cursor-pointer ${downActive ? "text-red-500" : "text-blue-400 hover:text-red-500"}`}
                           title={downActive ? "Remove downvote" : "Downvote"}
                         >
                           ▼
                         </button>
                       </div>
                       <button
-                        className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-50 rounded-lg transition"
+                        type="button"
+                        tabIndex={0}
+                        className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-50 rounded-lg transition cursor-pointer"
                         onClick={() => navigate(`/posts/${post.id}`)}
                       >
                         <span>💬</span> <span>Comment</span>
@@ -358,7 +402,10 @@ const LandingPage: React.FC = () => {
               {user ? (
                 <>
                   <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg border border-blue-100 mb-6 shadow">
-                    <div className="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold uppercase text-lg border border-blue-100">
+                    <div
+                      className="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold uppercase text-lg border border-blue-100 select-none"
+                      style={{ userSelect: "none" }}
+                    >
                       {user.username.charAt(0)}
                     </div>
                     <div className="min-w-0">
@@ -372,14 +419,15 @@ const LandingPage: React.FC = () => {
                   </div>
                   <div className="space-y-3">
                     <button
+                      type="button"
                       onClick={() => navigate("/forums/new")}
-                      className="block w-full text-center bg-blue-600 text-white text-sm font-bold py-3 rounded-lg hover:bg-blue-800 transition shadow"
+                      className="block w-full text-center bg-blue-600 text-white text-sm font-bold py-3 rounded-lg hover:bg-blue-800 transition shadow cursor-pointer"
                     >
                       + Create Forum
                     </button>
                     <Link
                       to="/profile"
-                      className="block w-full text-center border border-blue-200 text-blue-700 text-sm font-bold py-3 rounded-lg hover:bg-blue-50 transition"
+                      className="block w-full text-center border border-blue-200 text-blue-700 text-sm font-bold py-3 rounded-lg hover:bg-blue-50 transition cursor-pointer"
                     >
                       My Profile
                     </Link>
@@ -387,7 +435,7 @@ const LandingPage: React.FC = () => {
                 </>
               ) : (
                 <div className="space-y-4 text-center">
-                  <div className="w-11 h-11 bg-yellow-200 rounded-xl flex items-center justify-center mx-auto text-blue-900 text-lg font-bold mb-2 shadow">
+                  <div className="w-11 h-11 bg-yellow-200 rounded-xl flex items-center justify-center mx-auto text-blue-900 text-lg font-bold mb-2 shadow select-none">
                     UT
                   </div>
                   <p className="text-sm text-gray-700 font-medium">
@@ -395,13 +443,13 @@ const LandingPage: React.FC = () => {
                   </p>
                   <Link
                     to="/signup"
-                    className="block w-full bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700 transition shadow"
+                    className="block w-full bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700 transition shadow cursor-pointer"
                   >
                     Sign Up
                   </Link>
                   <Link
                     to="/signin"
-                    className="block text-sm text-blue-600 font-bold hover:underline transition"
+                    className="block text-sm text-blue-600 font-bold hover:underline transition cursor-pointer"
                   >
                     Already have an account? Sign in
                   </Link>

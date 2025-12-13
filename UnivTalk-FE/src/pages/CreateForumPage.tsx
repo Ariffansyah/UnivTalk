@@ -24,8 +24,10 @@ const CreateForumPage: React.FC = () => {
         if (res && res.data) {
           setCategories(res.data);
         }
-      } catch (err) {
-        console.error("Failed to fetch categories", err);
+      } catch (err: any) {
+        setError(
+          "Failed to fetch categories: " + (err.message || "Unknown error"),
+        );
       }
     };
     fetchCats();
@@ -70,7 +72,6 @@ const CreateForumPage: React.FC = () => {
         setTimeout(() => navigate("/forums"), 2000);
       }
     } catch (err: any) {
-      console.error(err);
       setError(err.message || "Failed to create forum");
     } finally {
       setLoading(false);
@@ -89,7 +90,7 @@ const CreateForumPage: React.FC = () => {
           className="bg-white p-4 sm:p-6 rounded-2xl shadow space-y-6"
         >
           {error && (
-            <div className="bg-red-50 text-red-600 p-3 rounded text-sm border border-red-200">
+            <div className="bg-red-50 text-red-600 p-3 rounded text-sm border border-red-200 font-bold">
               {error}
             </div>
           )}
@@ -108,6 +109,8 @@ const CreateForumPage: React.FC = () => {
               maxLength={21}
               className="w-full px-3 py-2 border border-blue-100 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
               placeholder="Forum name"
+              autoComplete="off"
+              aria-label="Forum name"
             />
             <div className="text-xs text-gray-400 mt-1 text-right">
               {21 - name.length} Characters remaining
@@ -121,7 +124,8 @@ const CreateForumPage: React.FC = () => {
             <select
               value={categoryId || ""}
               onChange={(e) => setCategoryId(Number(e.target.value))}
-              className="w-full p-2 border border-blue-100 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
+              className="w-full p-2 border border-blue-100 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white cursor-pointer"
+              aria-label="Select category"
             >
               <option value="" disabled>
                 Select a Category
@@ -144,6 +148,7 @@ const CreateForumPage: React.FC = () => {
               rows={4}
               className="w-full p-3 border border-blue-100 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
               placeholder="What is this forum about?"
+              aria-label="Forum description"
             ></textarea>
           </div>
 
@@ -151,16 +156,19 @@ const CreateForumPage: React.FC = () => {
             <button
               type="button"
               onClick={() => navigate(-1)}
-              className="px-4 py-2 border border-blue-600 text-blue-600 font-bold rounded-full hover:bg-blue-50 transition"
+              className="px-4 py-2 border border-blue-600 text-blue-600 font-bold rounded-full hover:bg-blue-50 transition cursor-pointer"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={loading}
-              className={`px-6 py-2 bg-blue-600 text-white font-bold rounded-full hover:bg-blue-700 transition ${
-                loading ? "opacity-50 cursor-not-allowed" : ""
+              className={`px-6 py-2 bg-blue-600 text-white font-bold rounded-full transition ${
+                loading
+                  ? "opacity-50 cursor-not-allowed"
+                  : "hover:bg-blue-700 cursor-pointer"
               }`}
+              style={loading ? { pointerEvents: "none" } : {}}
             >
               {loading ? "Creating..." : "Create Forum"}
             </button>
