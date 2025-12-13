@@ -2,6 +2,9 @@ import React, { useState, useRef, useEffect } from "react";
 import { fetchUniversitySuggestions } from "../services/api/uni";
 import { signUp } from "../services/api/auth.ts";
 import { useNavigate } from "react-router-dom";
+import logo from "../assets/LogoUnivTalk.png";
+
+<img src={logo} />
 
 const DEBOUNCE_DELAY = 400;
 
@@ -143,13 +146,17 @@ const SignUpPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-600 to-orange-100 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-blue-600 to-yellow-100 flex items-center justify-center p-4">
       <form
         onSubmit={handleSubmit}
         className="w-full max-w-lg bg-white rounded-xl shadow-2xl p-8max-w-md mx-auto bg-white p-8 rounded-xl shadow-lg border border-gray-200"
       >
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-blue-500 mb-2">UnivTalk</h1>
+          <img
+            src={logo}
+            alt="UnivTalk Logo"
+            className="w-32 mx-auto"
+          />
           <h2 className="text-2xl font-semibold text-gray-700">Create Account</h2>
           <p className="text-gray-500 text-sm mt-1">Join our university community</p>
         </div>
