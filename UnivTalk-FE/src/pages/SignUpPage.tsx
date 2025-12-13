@@ -24,6 +24,8 @@ const SignUpPage: React.FC = () => {
   const [selectedUniv, setSelectedUniv] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string>("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const inputRef = useRef<HTMLInputElement>(null);
   const debounceTimer = useRef<any>(null);
@@ -141,106 +143,134 @@ const SignUpPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 py-10">
+    <div className="min-h-screen bg-gradient-to-br from-blue-600 to-orange-100 flex items-center justify-center p-4">
       <form
         onSubmit={handleSubmit}
-        className="max-w-md mx-auto bg-white p-8 rounded-xl shadow-lg border border-gray-200"
+        className="w-full max-w-lg bg-white rounded-xl shadow-2xl p-8max-w-md mx-auto bg-white p-8 rounded-xl shadow-lg border border-gray-200"
       >
-        <h2 className="text-3xl font-extrabold mb-6 text-center text-gray-800">
-          Create Account
-        </h2>
+        <div className="text-center mb-8">
+          <h1 className="text-4xl font-bold text-blue-500 mb-2">UnivTalk</h1>
+          <h2 className="text-2xl font-semibold text-gray-700">Create Account</h2>
+          <p className="text-gray-500 text-sm mt-1">Join our university community</p>
+        </div>
 
         <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-4 mb-5">
           <div>
-            <label className="block text-sm font-semibold text-gray-700">
-              Username
+            <label className="block text-gray-700 font-semibold mb-2">
+              First Name
             </label>
             <input
               type="text"
-              name="username"
-              value={form.username}
+              name="firstName"
+              value={form.firstName}
               onChange={handleChange}
               required
-              className="w-full mt-1 p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-              placeholder="Min. 8 characters"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+              minLength={2}
+              placeholder="First name"
             />
           </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-semibold text-gray-700">
-                First Name
-              </label>
-              <input
-                type="text"
-                name="firstName"
-                value={form.firstName}
-                onChange={handleChange}
-                required
-                className="w-full mt-1 p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-semibold text-gray-700">
-                Last Name
-              </label>
-              <input
-                type="text"
-                name="lastName"
-                value={form.lastName}
-                onChange={handleChange}
-                required
-                className="w-full mt-1 p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-              />
-            </div>
-          </div>
-
           <div>
-            <label className="block text-sm font-semibold text-gray-700">
-              Email Address
+            <label className="block text-gray-700 font-semibold mb-2">
+              Last Name
             </label>
             <input
-              type="email"
-              name="email"
-              value={form.email}
+              type="text"
+              name="lastName"
+              value={form.lastName}
               onChange={handleChange}
               required
-              className="w-full mt-1 p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-              placeholder="name@university.edu"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+              minLength={2}
+              placeholder="Last name"
+            />
+          </div>
+        </div>
+
+        <div className="mb-5">
+          <label className="block text-gray-700 font-semibold mb-2">
+            Username
+          </label>
+          <input
+            type="text"
+            name="username"
+            value={form.username}
+            onChange={handleChange}
+            required
+            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+            minLength={8}
+            placeholder="At least 8 characters"
+          />
+        </div>
+
+          <div className="mb-5">
+          <label className="block text-gray-700 font-semibold mb-2">
+            Email Addres
+          </label>
+          <input
+            type="email"
+            name="email"
+            value={form.email}
+            onChange={handleChange}
+            required
+            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+            placeholder="name@university.edu"
             />
           </div>
 
-          <div className="grid grid-cols-1 gap-4">
-            <div>
-              <label className="block text-sm font-semibold text-gray-700">
-                Password
-              </label>
+          <div className="grid grid-cols-2 gap-4 mb-5">
+          <div>
+            <label className="block text-gray-700 font-semibold mb-2">
+              Password
+            </label>
+            <div className="relative">
               <input
-                type="password"
+                type={showPassword ? "text" : "password"}
                 name="password"
                 value={form.password}
                 onChange={handleChange}
-                required
-                className="w-full mt-1 p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-semibold text-gray-700">
-                Confirm Password
-              </label>
-              <input
-                type="password"
-                name="confirmPassword"
-                value={form.confirmPassword}
-                onChange={handleChange}
-                required
-                className="w-full mt-1 p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-              />
+              required
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+              minLength={8}
+              placeholder="At least 8 chars"
+            /> 
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-3 top-3 text-gray-500 hover:text-gray-700"
+            >
+              {showPassword ? <i className="fa-solid fa-eye"></i> : <i className="fa-solid fa-eye-slash"></i>}
+            </button>
             </div>
           </div>
+          <div>
+            <label className="block text-gray-700 font-semibold mb-2">
+              Confirm Password
+            </label>
+            <div className="relative">
+            <input
+              type={showConfirmPassword ? "text" : "password"}
+              name="confirmPassword"
+              value={form.confirmPassword}
+              onChange={handleChange}
+              required
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition pr-10"
+              minLength={8}
+              placeholder="Repeat password"
+            /><button
+              type="button"
+              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+              className="absolute right-3 top-3 text-gray-500 hover:text-gray-700"
+            >
+              {showConfirmPassword ? <i className="fa-solid fa-eye"></i> : <i className="fa-solid fa-eye-slash"></i>}
+            </button>
+            </div>
+          </div>
+        </div>
 
           <div className="relative">
-            <label className="block text-sm font-semibold text-gray-700">
+            <label className="block text-gray-700 font-semibold mb-2">
               University
             </label>
             <input
@@ -252,7 +282,7 @@ const SignUpPage: React.FC = () => {
               onChange={handleUniversityInput}
               onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
               required
-              className="w-full mt-1 p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
               placeholder="Search your university..."
             />
             {showSuggestions && (
@@ -281,14 +311,14 @@ const SignUpPage: React.FC = () => {
           </div>
 
           <div>
-            <label className="block text-sm font-semibold text-gray-700">
+            <label className="block text-gray-700 font-semibold mb-2">
               Student Status
             </label>
             <select
               name="status"
               value={form.status}
               onChange={handleChange}
-              className="w-full mt-1 p-2.5 border rounded-lg bg-white focus:ring-2 focus:ring-blue-500 outline-none"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-transparent transition"
             >
               <option value="active">Active Student</option>
               <option value="inactive">Alumni / Inactive</option>
@@ -309,6 +339,18 @@ const SignUpPage: React.FC = () => {
         >
           {isSubmitting ? "Creating Account..." : "Register"}
         </button>
+
+        <div className="mt-6 pt-6 border-t border-gray-200">
+          <p className="text-center text-gray-600">
+            Already have an account?{" "}
+            <span
+              onClick={() => navigate("/signin")}
+              className="text-blue-600 font-semibold hover:text-gray-600 cursor-pointer transition-colors duration-300"
+            >
+              Sign in here
+            </span>
+          </p>
+        </div>
       </form>
     </div>
   );
