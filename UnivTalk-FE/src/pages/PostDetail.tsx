@@ -57,6 +57,7 @@ const PostDetail: React.FC = () => {
   const [editBody, setEditBody] = useState("");
   const [editingCommentId, setEditingCommentId] = useState<number | null>(null);
   const [editingCommentBody, setEditingCommentBody] = useState("");
+  const [myRole, setMyRole] = useState<string | null>(null);
 
   const formatDate = (dateString?: string) => {
     if (!dateString) return "N/A";
@@ -126,11 +127,21 @@ const PostDetail: React.FC = () => {
       if (normalizedPost.forum_id) {
         const forumRes = await getForumById(String(normalizedPost.forum_id));
         if (forumRes && (forumRes as any).forum) {
-          setForum((forumRes as any).forum as Forum);
+          const forumData = (forumRes as any).forum as Forum;
+          setForum(forumData);
+
+          if (currentUser && (forumRes as any).forum_members) {
+            const myRecord = (forumRes as any).forum_members.find(
+              (member: any) => member.user_id === currentUser.user_id,
+            );
+            if (myRecord) {
+              setMyRole(myRecord.role);
+            }
+          }
         }
       }
     } catch (err: any) {
-      setError("Gagal mengambil data post: " + (err?.message || ""));
+      setError("Gagal mengambil data post:  " + (err?.message || ""));
     } finally {
       setLoading(false);
     }
@@ -397,7 +408,7 @@ const PostDetail: React.FC = () => {
 
   const handleDeleteComment = async (commentId: number) => {
     setActionError(null);
-    const ok = await showConfirm("Delete this comment?");
+    const ok = await showConfirm("Delete this comment? ");
     if (!ok) return;
     try {
       await apiDeleteComment(commentId);
@@ -450,6 +461,7 @@ const PostDetail: React.FC = () => {
   const upActive = post.my_vote === 1;
   const downActive = post.my_vote === -1;
   const isOwner = currentUser?.user_id === post.user_id;
+  const hasAdminPower = currentUser?.is_admin || myRole === "admin";
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
@@ -461,7 +473,7 @@ const PostDetail: React.FC = () => {
         )}
         <button
           onClick={() => navigate(-1)}
-          className="mb-4 flex items-center gap-2 text-sm font-bold text-blue-600 hover:underline transition"
+          className="mb-4 flex items-center gap-2 text-sm font-bold text-blue-600 hover: underline transition"
         >
           ← Back
         </button>
@@ -499,15 +511,17 @@ const PostDetail: React.FC = () => {
                     {forum.title}
                   </button>
                 )}
-                {isOwner && (
+                {(isOwner || hasAdminPower) && (
                   <>
-                    <button
-                      onClick={handleOpenEdit}
-                      className="px-3 py-1.5 text-xs font-bold rounded-lg bg-gray-900 text-white hover:bg-gray-800 transition cursor-pointer"
-                      title="Edit post"
-                    >
-                      Edit
-                    </button>
+                    {isOwner && (
+                      <button
+                        onClick={handleOpenEdit}
+                        className="px-3 py-1.5 text-xs font-bold rounded-lg bg-gray-900 text-white hover:bg-gray-800 transition cursor-pointer"
+                        title="Edit post"
+                      >
+                        Edit
+                      </button>
+                    )}
                     <button
                       onClick={handleDeletePost}
                       className="px-3 py-1.5 text-xs font-bold rounded-lg bg-red-600 text-white hover:bg-red-700 transition cursor-pointer"
@@ -692,16 +706,18 @@ const PostDetail: React.FC = () => {
                           {formatDate(comment.created_at)}
                         </span>
                       </div>
-                      {isCommentOwner && (
+                      {(isCommentOwner || hasAdminPower) && (
                         <div className="flex items-center gap-2">
-                          <button
-                            onClick={() =>
-                              startEditComment(comment.id, comment.body)
-                            }
-                            className="px-2 py-1 text-[10px] font-bold rounded bg-gray-900 text-white hover:bg-gray-800 cursor-pointer"
-                          >
-                            Edit
-                          </button>
+                          {isCommentOwner && (
+                            <button
+                              onClick={() =>
+                                startEditComment(comment.id, comment.body)
+                              }
+                              className="px-2 py-1 text-[10px] font-bold rounded bg-gray-900 text-white hover:bg-gray-800 cursor-pointer"
+                            >
+                              Edit
+                            </button>
+                          )}
                           <button
                             onClick={() => handleDeleteComment(comment.id)}
                             className="px-2 py-1 text-[10px] font-bold rounded bg-red-600 text-white hover:bg-red-700 cursor-pointer"
@@ -879,16 +895,18 @@ const PostDetail: React.FC = () => {
                                 {formatDate(reply.created_at)}
                               </span>
                             </div>
-                            {isReplyOwner && (
+                            {(isReplyOwner || hasAdminPower) && (
                               <div className="flex items-center gap-2">
-                                <button
-                                  onClick={() =>
-                                    startEditComment(reply.id, reply.body)
-                                  }
-                                  className="px-2 py-1 text-[10px] font-bold rounded bg-gray-900 text-white hover:bg-gray-800 cursor-pointer"
-                                >
-                                  Edit
-                                </button>
+                                {isReplyOwner && (
+                                  <button
+                                    onClick={() =>
+                                      startEditComment(reply.id, reply.body)
+                                    }
+                                    className="px-2 py-1 text-[10px] font-bold rounded bg-gray-900 text-white hover:bg-gray-800 cursor-pointer"
+                                  >
+                                    Edit
+                                  </button>
+                                )}
                                 <button
                                   onClick={() => handleDeleteComment(reply.id)}
                                   className="px-2 py-1 text-[10px] font-bold rounded bg-red-600 text-white hover:bg-red-700 cursor-pointer"
