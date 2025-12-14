@@ -7,8 +7,7 @@ const Layout: React.FC = () => {
   return (
     <div className="flex flex-col min-h-screen bg-gray-50">
       <Navbar />
-      {/* Outlet adalah tempat halaman-halaman (LandingPage, Profile, dll) dirender */}
-      <main className="flex-grow">
+      <main className="grow">
         <Outlet />
       </main>
       <Footer />

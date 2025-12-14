@@ -396,6 +396,43 @@ func JoinForum(c *gin.Context, db *pg.DB, ch *cache.Cache) {
 	})
 }
 
+func GetForumsByUserID(c *gin.Context, db *pg.DB, ch *cache.Cache) {
+	userID, err := getUserIDFromContext(c)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		return
+	}
+
+	var forumMembers []Models.ForumMembers
+	err = db.Model(&forumMembers).Where("user_id = ?", userID).Select()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":  "Failed to retrieve user's forums",
+			"detail": err.Error(),
+		})
+		return
+	}
+
+	forumIDs := make([]uuid.UUID, len(forumMembers))
+	for i, member := range forumMembers {
+		forumIDs[i] = member.ForumID
+	}
+
+	var forums []Models.Forums
+	err = db.Model(&forums).Where("fid IN (?)", pg.In(forumIDs)).Select()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":  "Failed to retrieve forums",
+			"detail": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"forums": forums,
+	})
+}
+
 func LeaveForum(c *gin.Context, db *pg.DB, ch *cache.Cache) {
 	forumIDStr := c.Param("forum_id")
 

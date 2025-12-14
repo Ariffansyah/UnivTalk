@@ -16,6 +16,9 @@ import ProfilePage from "./pages/ProfilePage";
 import CreateForumPage from "./pages/CreateForumPage";
 import NotFound from "./pages/NotFound";
 import CreditPage from "./pages/CreditPage";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
+import TermsOfService from "./pages/Terms";
+
 function App() {
   return (
     <ErrorBoundary>
@@ -29,7 +32,6 @@ function App() {
 
             <Route element={<ProtectedRoute />}>
               <Route element={<Layout />}>
-                {" "}
                 <Route path="/" element={<LandingPage />} />
                 <Route path="/forums" element={<ForumList />} />
                 <Route path="/forums/new" element={<CreateForumPage />} />
@@ -38,6 +40,8 @@ function App() {
                 <Route path="/profile" element={<ProfilePage />} />
                 <Route path="/profile/:userId" element={<ProfilePage />} />
                 <Route path="/credits" element={<CreditPage />} />
+                <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+                <Route path="/terms" element={<TermsOfService />} />
               </Route>
             </Route>
             <Route path="*" element={<NotFound />} />

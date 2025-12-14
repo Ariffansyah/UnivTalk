@@ -73,3 +73,9 @@ export async function getForumMembers(forumId: string) {
 export async function getCategories() {
   return apiRequest<{ data: Category[] }>("/categories", { method: "GET" });
 }
+
+export async function getUserForums(userId: string) {
+  return apiRequest<{ forums: Forum[] }>(`/forums/user/${userId}`, {
+    method: "GET",
+  });
+}

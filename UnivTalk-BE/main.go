@@ -120,6 +120,7 @@ func main() {
 			forums.POST("/:forum_id/leave", func(c *gin.Context) { Handlers.LeaveForum(c, db, cacheData) })
 			forums.GET("/:forum_id/posts", func(c *gin.Context) { Handlers.GetForumPosts(c, db, cacheData) })
 			forums.GET("/:forum_id/members", func(c *gin.Context) { Handlers.GetForumMembersByID(c, db, cacheData) })
+			forums.GET("/user/:user_id", func(c *gin.Context) { Handlers.GetForumsByUserID(c, db, cacheData) })
 		}
 
 		posts := protected.Group("/posts")

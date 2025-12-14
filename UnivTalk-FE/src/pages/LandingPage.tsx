@@ -4,6 +4,7 @@ import { useAuth } from "../context/AuthContext";
 import {
   getForums,
   getCategories,
+  getUserForums,
   type Forum,
   type Category,
 } from "../services/api/forums";
@@ -19,12 +20,15 @@ type PostWithVote = Post & { my_vote?: number | null };
 
 type SortOption = "newest" | "day" | "week" | "month" | "alltime";
 
+type TabOption = "all" | "following";
+
 const POSTS_PER_PAGE = 10;
 
 const LandingPage: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [forums, setForums] = useState<Forum[]>([]);
+  const [myForums, setMyForums] = useState<Forum[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [posts, setPosts] = useState<PostWithVote[]>([]);
   const [filteredPosts, setFilteredPosts] = useState<PostWithVote[]>([]);
@@ -32,6 +36,7 @@ const LandingPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<SortOption>("newest");
+  const [activeTab, setActiveTab] = useState<TabOption>("all");
   const [visibleCount, setVisibleCount] = useState(POSTS_PER_PAGE);
 
   const formatDate = (dateString?: string) => {
@@ -80,7 +85,7 @@ const LandingPage: React.FC = () => {
       setError(
         err?.message
           ? `Failed to load posts: ${err.message}`
-          : "Failed to load posts.  Please reload this page.",
+          : "Failed to load posts.   Please reload this page.",
       );
     }
   };
@@ -100,12 +105,24 @@ const LandingPage: React.FC = () => {
         if (catRes && (catRes as any).data) {
           setCategories((catRes as any).data);
         }
+
+        if (user?.user_id) {
+          try {
+            const myForumsRes = await getUserForums(user.user_id);
+            if (myForumsRes && (myForumsRes as any).forums) {
+              setMyForums((myForumsRes as any).forums);
+            }
+          } catch (err) {
+            console.error("Failed to fetch user forums:", err);
+          }
+        }
+
         await fetchPostsWithVotes();
       } catch (err: any) {
         setError(
           err?.message
-            ? `Failed to load:  ${err.message}`
-            : "Failed to load data. Please reload this page.",
+            ? `Failed to load:   ${err.message}`
+            : "Failed to load data.  Please reload this page.",
         );
       } finally {
         setLoading(false);
@@ -116,6 +133,12 @@ const LandingPage: React.FC = () => {
 
   useEffect(() => {
     let sorted = [...posts];
+
+    if (activeTab === "following") {
+      const myForumIds = myForums.map((f) => f.fid);
+      sorted = sorted.filter((p) => myForumIds.includes(p.forum_id));
+    }
+
     const now = new Date();
 
     if (sortBy === "newest") {
@@ -176,7 +199,7 @@ const LandingPage: React.FC = () => {
 
     setFilteredPosts(sorted);
     setVisibleCount(POSTS_PER_PAGE);
-  }, [posts, sortBy]);
+  }, [posts, sortBy, activeTab, myForums]);
 
   useEffect(() => {
     setDisplayedPosts(filteredPosts.slice(0, visibleCount));
@@ -349,6 +372,32 @@ const LandingPage: React.FC = () => {
                 </div>
               </div>
             </div>
+
+            {user && (
+              <div className="flex gap-2 mb-4 border-b border-blue-100">
+                <button
+                  onClick={() => setActiveTab("all")}
+                  className={`px-4 py-2 font-bold text-sm transition border-b-2 ${
+                    activeTab === "all"
+                      ? "border-blue-600 text-blue-700"
+                      : "border-transparent text-gray-500 hover:text-blue-600 hover:border-blue-300"
+                  }`}
+                >
+                  All Posts
+                </button>
+                <button
+                  onClick={() => setActiveTab("following")}
+                  className={`px-4 py-2 font-bold text-sm transition border-b-2 ${
+                    activeTab === "following"
+                      ? "border-blue-600 text-blue-700"
+                      : "border-transparent text-gray-500 hover:text-blue-600 hover:border-blue-300"
+                  }`}
+                >
+                  Following
+                </button>
+              </div>
+            )}
+
             {loading ? (
               <div className="space-y-4">
                 {[1, 2, 3].map((i) => (
@@ -360,10 +409,22 @@ const LandingPage: React.FC = () => {
               </div>
             ) : displayedPosts.length === 0 ? (
               <div className="bg-white p-10 rounded-xl border-2 border-yellow-100 text-center shadow">
-                <div className="text-4xl mb-2">🚀</div>
+                <div className="text-4xl mb-2">
+                  {activeTab === "following" ? "📭" : "🚀"}
+                </div>
                 <p className="text-gray-500 font-medium">
-                  No posts found for this filter. Try a different option!
+                  {activeTab === "following"
+                    ? "No posts from forums you're following.  Join some forums to see posts here!"
+                    : "No posts found for this filter.  Try a different option! "}
                 </p>
+                {activeTab === "following" && myForums.length === 0 && (
+                  <Link
+                    to="/forums"
+                    className="inline-block mt-4 px-6 py-2 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition"
+                  >
+                    Browse Forums
+                  </Link>
+                )}
               </div>
             ) : (
               <>
@@ -504,22 +565,6 @@ const LandingPage: React.FC = () => {
             <div className="bg-white p-6 rounded-xl border border-blue-200 shadow sticky top-24">
               {user ? (
                 <>
-                  <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg border border-blue-100 mb-6 shadow">
-                    <div
-                      className="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold uppercase text-lg border border-blue-100 select-none"
-                      style={{ userSelect: "none" }}
-                    >
-                      {user.username.charAt(0)}
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-xs text-blue-700 font-bold">
-                        Logged in as
-                      </p>
-                      <p className="text-base font-bold text-gray-800 truncate">
-                        @{user.username}
-                      </p>
-                    </div>
-                  </div>
                   <div className="space-y-3">
                     <button
                       type="button"
@@ -590,11 +635,11 @@ const LandingPage: React.FC = () => {
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   strokeWidth="2"
-                  d="M8 15s1.5-2 4-2 4 2 4 2M12 13v. 01"
+                  d="M8 15s1.5-2 4-2 4 2 4 2M12 13v.01"
                 />
               </svg>
               Your university community is more fun when you contribute.{" "}
-              <span className="font-bold">Post, Vote, Discuss!</span>
+              <span className="font-bold">Post, Vote, Discuss! </span>
             </div>
           </aside>
         </div>
