@@ -70,7 +70,7 @@ const ForumDetail: React.FC = () => {
       }));
       setPosts(mapped);
     } catch (err: any) {
-      setError("Failed to fetch posts:  " + (err.message || "Unknown error"));
+      setError("Failed to fetch posts:   " + (err.message || "Unknown error"));
       showToast("Failed to fetch posts", "error");
     }
   };
@@ -123,7 +123,7 @@ const ForumDetail: React.FC = () => {
           );
         }
       } catch (err: any) {
-        setError("Failed to load data: " + (err.message || "Unknown error"));
+        setError("Failed to load data:  " + (err.message || "Unknown error"));
       } finally {
         setLoading(false);
       }
@@ -204,6 +204,8 @@ const ForumDetail: React.FC = () => {
   };
 
   const hasAdminPower = user?.is_admin || myRole === "admin";
+  const isForumOwner = user && forum && forum.user_id === user.user_id;
+  const canEditForum = myRole === "admin" || isForumOwner;
 
   const categoryName = forum
     ? categories.find((c) => c.id === forum.category_id)?.name
@@ -234,7 +236,7 @@ const ForumDetail: React.FC = () => {
       setError(
         "Failed to update membership: " + (err.message || "Unknown error"),
       );
-      showToast("Failed to update membership.  Please try again.", "error");
+      showToast("Failed to update membership.   Please try again.", "error");
     } finally {
       setJoinLoading(false);
     }
@@ -303,13 +305,13 @@ const ForumDetail: React.FC = () => {
     } catch (err: any) {
       setError("Failed to vote: " + (err.message || "Unknown error"));
       await fetchPosts();
-      showToast("Failed to vote.  Please try again.", "error");
+      showToast("Failed to vote.   Please try again.", "error");
     }
   };
 
   const handleDeleteForum = async () => {
     if (!forumId) return;
-    const ok = await showConfirm("DANGER: Delete this forum? ");
+    const ok = await showConfirm("DANGER: Delete this forum?  ");
     if (!ok) return;
     try {
       await deleteForum(forumId);
@@ -378,9 +380,11 @@ const ForumDetail: React.FC = () => {
                       <span>👑</span>{" "}
                       {user.is_admin ? "System Admin" : "Forum Admin"}
                     </div>
-                    <button className="px-4 sm:px-6 py-2 bg-gray-900 text-white font-semibold rounded-lg hover:bg-gray-800 transition shadow-sm cursor-pointer">
-                      Edit Forum
-                    </button>
+                    {canEditForum && (
+                      <button className="px-4 sm:px-6 py-2 bg-gray-900 text-white font-semibold rounded-lg hover:bg-gray-800 transition shadow-sm cursor-pointer">
+                        Edit Forum
+                      </button>
+                    )}
                     <button
                       onClick={handleDeleteForum}
                       className="px-4 sm:px-6 py-2 bg-red-600 text-white font-semibold rounded-lg hover:bg-red-700 transition shadow-sm cursor-pointer"
@@ -392,7 +396,7 @@ const ForumDetail: React.FC = () => {
                   <button
                     onClick={handleJoinLeave}
                     disabled={joinLoading}
-                    className={`px-6 sm:px-8 py-2. 5 rounded-lg font-semibold transition shadow-sm ${
+                    className={`px-6 sm:px-8 py-2.  5 rounded-lg font-semibold transition shadow-sm ${
                       isMember
                         ? "bg-white border-2 border-red-500 text-red-500 hover:bg-red-50"
                         : "bg-blue-600 text-white hover:bg-blue-700 hover:shadow-md"
@@ -501,7 +505,7 @@ const ForumDetail: React.FC = () => {
                 <p className="text-gray-500">
                   {posts.length === 0
                     ? "Be the first to start a conversation."
-                    : "Try a different filter."}
+                    : "Try a different filter. "}
                 </p>
               </div>
             ) : (
