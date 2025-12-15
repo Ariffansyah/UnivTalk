@@ -7,7 +7,9 @@ import {
   deleteForum,
   getForumMembers,
   getCategories,
+  updateForum,
   type Forum,
+  type Category,
 } from "../services/api/forums";
 import { getPostsByForum, votePost, type Post } from "../services/api/posts";
 import { useAuth } from "../context/AuthContext";
@@ -40,9 +42,7 @@ const ForumDetail: React.FC = () => {
   const { showToast, showConfirm } = useAlert();
 
   const [forum, setForum] = useState<Forum | null>(null);
-  const [categories, setCategories] = useState<{ id: number; name: string }[]>(
-    [],
-  );
+  const [categories, setCategories] = useState<Category[]>([]);
   const [posts, setPosts] = useState<PostWithVote[]>([]);
   const [filteredPosts, setFilteredPosts] = useState<PostWithVote[]>([]);
   const [displayedPosts, setDisplayedPosts] = useState<PostWithVote[]>([]);
@@ -53,8 +53,14 @@ const ForumDetail: React.FC = () => {
   const [myRole, setMyRole] = useState<string | null>(null);
   const [joinLoading, setJoinLoading] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [sortBy, setSortBy] = useState<SortOption>("newest");
   const [visibleCount, setVisibleCount] = useState(POSTS_PER_PAGE);
+
+  const [editTitle, setEditTitle] = useState("");
+  const [editDescription, setEditDescription] = useState("");
+  const [editCategoryId, setEditCategoryId] = useState<number | null>(null);
+  const [editLoading, setEditLoading] = useState(false);
 
   const fetchPosts = async () => {
     if (!forumId) return;
@@ -75,25 +81,31 @@ const ForumDetail: React.FC = () => {
     }
   };
 
+  const fetchForumData = async () => {
+    if (!forumId) return;
+    const forumRes = await getForumById(forumId);
+    if (forumRes && forumRes.forum) {
+      setForum(forumRes.forum);
+      setEditTitle(forumRes.forum.title);
+      setEditDescription(forumRes.forum.description);
+      setEditCategoryId(forumRes.forum.category_id ?? null);
+    } else {
+      setError("Forum not found");
+    }
+  };
+
   useEffect(() => {
     if (!forumId) return;
     const fetchData = async () => {
       setLoading(true);
       try {
-        const forumRes = await getForumById(forumId);
-        if (forumRes && forumRes.forum) {
-          setForum(forumRes.forum);
-        } else {
-          setError("Forum not found");
-          setLoading(false);
-          return;
-        }
+        await fetchForumData();
         await fetchPosts();
         try {
           const catRes = await getCategories();
-          const cats =
-            catRes && (catRes as any).data ? (catRes as any).data : [];
-          setCategories(cats);
+          if (catRes && catRes.data) {
+            setCategories(catRes.data);
+          }
         } catch (err: any) {
           setError(
             "Failed to fetch categories: " + (err.message || "Unknown error"),
@@ -123,7 +135,7 @@ const ForumDetail: React.FC = () => {
           );
         }
       } catch (err: any) {
-        setError("Failed to load data:  " + (err.message || "Unknown error"));
+        setError("Failed to load data: " + (err.message || "Unknown error"));
       } finally {
         setLoading(false);
       }
@@ -242,6 +254,40 @@ const ForumDetail: React.FC = () => {
     }
   };
 
+  const handleEditForum = () => {
+    setIsEditModalOpen(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!forumId || !editTitle.trim() || !editDescription.trim()) {
+      showToast("Title and description are required.", "warning");
+      return;
+    }
+
+    if (!editCategoryId) {
+      showToast("Please select a category.", "warning");
+      return;
+    }
+
+    setEditLoading(true);
+    try {
+      await updateForum(forumId, {
+        title: editTitle,
+        description: editDescription,
+        category_id: editCategoryId,
+      });
+
+      await fetchForumData();
+      setIsEditModalOpen(false);
+      showToast("Forum updated successfully!", "success");
+    } catch (err: any) {
+      setError("Failed to update forum: " + (err.message || "Unknown error"));
+      showToast("Failed to update forum. Please try again.", "error");
+    } finally {
+      setEditLoading(false);
+    }
+  };
+
   const handleVote = async (postId: number, type: "upvote" | "downvote") => {
     if (!user) {
       showToast("Please sign in to vote.", "warning");
@@ -311,7 +357,7 @@ const ForumDetail: React.FC = () => {
 
   const handleDeleteForum = async () => {
     if (!forumId) return;
-    const ok = await showConfirm("DANGER: Delete this forum?  ");
+    const ok = await showConfirm("DANGER: Delete this forum? ");
     if (!ok) return;
     try {
       await deleteForum(forumId);
@@ -381,7 +427,10 @@ const ForumDetail: React.FC = () => {
                       {user.is_admin ? "System Admin" : "Forum Admin"}
                     </div>
                     {canEditForum && (
-                      <button className="px-4 sm:px-6 py-2 bg-gray-900 text-white font-semibold rounded-lg hover:bg-gray-800 transition shadow-sm cursor-pointer">
+                      <button
+                        onClick={handleEditForum}
+                        className="px-4 sm:px-6 py-2 bg-gray-900 text-white font-semibold rounded-lg hover:bg-gray-800 transition shadow-sm cursor-pointer"
+                      >
                         Edit Forum
                       </button>
                     )}
@@ -396,7 +445,7 @@ const ForumDetail: React.FC = () => {
                   <button
                     onClick={handleJoinLeave}
                     disabled={joinLoading}
-                    className={`px-6 sm:px-8 py-2.  5 rounded-lg font-semibold transition shadow-sm ${
+                    className={`px-6 sm:px-8 py-2. 5 rounded-lg font-semibold transition shadow-sm ${
                       isMember
                         ? "bg-white border-2 border-red-500 text-red-500 hover:bg-red-50"
                         : "bg-blue-600 text-white hover:bg-blue-700 hover:shadow-md"
@@ -631,6 +680,83 @@ const ForumDetail: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {isEditModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-blue-100">
+              <h2 className="text-2xl font-bold text-gray-900">Edit Forum</h2>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Title
+                </label>
+                <input
+                  type="text"
+                  value={editTitle}
+                  onChange={(e) => setEditTitle(e.target.value)}
+                  className="w-full px-4 py-3 border border-blue-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Forum title"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Description
+                </label>
+                <textarea
+                  value={editDescription}
+                  onChange={(e) => setEditDescription(e.target.value)}
+                  rows={4}
+                  className="w-full px-4 py-3 border border-blue-200 rounded-lg focus:outline-none focus:ring-2 focus: ring-blue-500 resize-none"
+                  placeholder="Forum description"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Category
+                </label>
+                <div className="relative">
+                  <select
+                    value={editCategoryId || ""}
+                    onChange={(e) => setEditCategoryId(Number(e.target.value))}
+                    className="w-full px-4 py-3 border border-blue-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none cursor-pointer"
+                  >
+                    <option value="" disabled>
+                      Select a Category
+                    </option>
+                    {categories.map((cat) => (
+                      <option key={cat.id} value={cat.id}>
+                        {cat.name}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
+                    ▼
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="p-6 border-t border-blue-100 flex justify-end gap-3">
+              <button
+                onClick={() => setIsEditModalOpen(false)}
+                disabled={editLoading}
+                className="px-6 py-2. 5 border-2 border-gray-300 text-gray-700 font-semibold rounded-lg hover:bg-gray-50 transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveEdit}
+                disabled={editLoading}
+                className="px-6 py-2.5 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {editLoading ? "Saving..." : "Save Changes"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {forumId && (
         <CreatePostModal
           forumId={forumId}
