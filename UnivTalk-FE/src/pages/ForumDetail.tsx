@@ -15,6 +15,7 @@ import { getPostsByForum, votePost, type Post } from "../services/api/posts";
 import { useAuth } from "../context/AuthContext";
 import CreatePostModal from "../components/CreatePostModal";
 import { useAlert } from "../context/AlertContext";
+import { validateForumContent } from "../utils/contentModeration";
 
 const getValidDate = (dateString?: string) => {
   if (!dateString) return new Date();
@@ -76,7 +77,7 @@ const ForumDetail: React.FC = () => {
       }));
       setPosts(mapped);
     } catch (err: any) {
-      setError("Failed to fetch posts:   " + (err.message || "Unknown error"));
+      setError("Failed to fetch posts:    " + (err.message || "Unknown error"));
       showToast("Failed to fetch posts", "error");
     }
   };
@@ -248,7 +249,7 @@ const ForumDetail: React.FC = () => {
       setError(
         "Failed to update membership: " + (err.message || "Unknown error"),
       );
-      showToast("Failed to update membership.   Please try again.", "error");
+      showToast("Failed to update membership.    Please try again.", "error");
     } finally {
       setJoinLoading(false);
     }
@@ -269,6 +270,15 @@ const ForumDetail: React.FC = () => {
       return;
     }
 
+    const validation = validateForumContent(
+      editTitle.trim(),
+      editDescription.trim(),
+    );
+    if (!validation.isValid) {
+      showToast(validation.error, "error");
+      return;
+    }
+
     setEditLoading(true);
     try {
       const updateData: any = {
@@ -285,7 +295,7 @@ const ForumDetail: React.FC = () => {
       showToast("Forum updated successfully!", "success");
     } catch (err: any) {
       console.error("Update error:", err);
-      showToast("Failed to update forum.  Please try again.", "error");
+      showToast("Failed to update forum.   Please try again.", "error");
     } finally {
       setEditLoading(false);
     }
@@ -354,13 +364,13 @@ const ForumDetail: React.FC = () => {
     } catch (err: any) {
       setError("Failed to vote: " + (err.message || "Unknown error"));
       await fetchPosts();
-      showToast("Failed to vote.   Please try again.", "error");
+      showToast("Failed to vote.    Please try again.", "error");
     }
   };
 
   const handleDeleteForum = async () => {
     if (!forumId) return;
-    const ok = await showConfirm("DANGER: Delete this forum? ");
+    const ok = await showConfirm("DANGER: Delete this forum?");
     if (!ok) return;
     try {
       await deleteForum(forumId);
@@ -647,7 +657,7 @@ const ForumDetail: React.FC = () => {
                           </button>
                         </div>
                         <button
-                          className="flex items-center gap-2 px-3 py-1. 5 text-sm font-medium text-blue-600 hover:bg-blue-50 rounded-lg transition cursor-pointer"
+                          className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-50 rounded-lg transition cursor-pointer"
                           onClick={() => navigate(`/posts/${post.id}`)}
                         >
                           <span>💬</span> <span>Comment</span>

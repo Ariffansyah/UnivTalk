@@ -14,6 +14,7 @@ import {
 } from "../services/api/posts";
 import { getForumById, type Forum } from "../services/api/forums";
 import { useAlert } from "../context/AlertContext";
+import { containsBadWords } from "../utils/contentModeration";
 
 type Comment = {
   id: number;
@@ -141,7 +142,7 @@ const PostDetail: React.FC = () => {
         }
       }
     } catch (err: any) {
-      setError("Gagal mengambil data post:  " + (err?.message || ""));
+      setError("Gagal mengambil data post:    " + (err?.message || ""));
     } finally {
       setLoading(false);
     }
@@ -164,6 +165,12 @@ const PostDetail: React.FC = () => {
     setActionError(null);
     const body = parentId === null ? commentBody : replyBody;
     if (!body.trim() || !postId) return;
+
+    if (containsBadWords(body.trim())) {
+      showActionError("Comment contains inappropriate or offensive language");
+      return;
+    }
+
     setSubmitting(true);
     try {
       const res = await fetch(`${import.meta.env.VITE_API_URL}/comments/`, {
@@ -355,6 +362,19 @@ const PostDetail: React.FC = () => {
     e.preventDefault();
     setActionError(null);
     if (!postId) return;
+
+    if (containsBadWords(editTitle.trim())) {
+      showActionError(
+        "Post title contains inappropriate or offensive language",
+      );
+      return;
+    }
+
+    if (containsBadWords(editBody.trim())) {
+      showActionError("Post body contains inappropriate or offensive language");
+      return;
+    }
+
     try {
       const res = await fetch(
         `${import.meta.env.VITE_API_URL}/posts/${postId}`,
@@ -368,6 +388,7 @@ const PostDetail: React.FC = () => {
       if (!res.ok) throw new Error("Failed to update post");
       setIsEditOpen(false);
       await fetchPostAndComments();
+      showToast("Post updated successfully!", "success");
     } catch (err: any) {
       showActionError("Gagal update post: " + (err.message || ""));
     }
@@ -396,19 +417,26 @@ const PostDetail: React.FC = () => {
     e.preventDefault();
     setActionError(null);
     if (!editingCommentId) return;
+
+    if (containsBadWords(editingCommentBody.trim())) {
+      showActionError("Comment contains inappropriate or offensive language");
+      return;
+    }
+
     try {
       await updateComment(editingCommentId, editingCommentBody);
       setEditingCommentId(null);
       setEditingCommentBody("");
       await fetchPostAndComments();
+      showToast("Comment updated successfully!", "success");
     } catch (err: any) {
-      showActionError("Gagal update comment: " + (err.message || ""));
+      showActionError("Gagal update comment:  " + (err.message || ""));
     }
   };
 
   const handleDeleteComment = async (commentId: number) => {
     setActionError(null);
-    const ok = await showConfirm("Delete this comment? ");
+    const ok = await showConfirm("Delete this comment?");
     if (!ok) return;
     try {
       await apiDeleteComment(commentId);
@@ -468,12 +496,12 @@ const PostDetail: React.FC = () => {
       <div className="max-w-3xl mx-auto px-2 sm:px-4">
         {actionError && (
           <div className="mb-4 p-3 text-center bg-red-50 border border-red-400 rounded text-red-700 font-bold">
-            {actionError}
+            ⚠️ {actionError}
           </div>
         )}
         <button
           onClick={() => navigate(-1)}
-          className="mb-4 flex items-center gap-2 text-sm font-bold text-blue-600 hover: underline transition"
+          className="mb-4 flex items-center gap-2 text-sm font-bold text-blue-600 hover:underline transition"
         >
           ← Back
         </button>

@@ -1,6 +1,13 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import { createPost } from "../services/api/posts";
+import {
+  containsBadWords,
+  loadNSFWModel,
+  checkImageNSFW,
+  validateImage,
+  moderateVideo,
+} from "../utils/contentModeration";
 
 interface CreatePostModalProps {
   forumId: string;
@@ -23,13 +30,22 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({
   const [media, setMedia] = useState<File | null>(null);
   const [mediaPreview, setMediaPreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [mediaChecking, setMediaChecking] = useState(false);
   const [validationError, setValidationError] = useState<string>("");
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  useEffect(() => {
+    if (isOpen) {
+      loadNSFWModel().catch((err) => {
+        console.error("Failed to load NSFW model:", err);
+      });
+    }
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     setValidationError("");
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
@@ -42,8 +58,49 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({
         setValidationError("Media file must be smaller than 10MB.");
         return;
       }
-      setMedia(file);
-      setMediaPreview(URL.createObjectURL(file));
+
+      setMediaChecking(true);
+
+      try {
+        if (file.type.startsWith("image/")) {
+          const imageValidation = validateImage(file, 10);
+          if (!imageValidation.isValid) {
+            setValidationError(imageValidation.error);
+            setMediaChecking(false);
+            return;
+          }
+
+          const nsfwResult = await checkImageNSFW(file);
+
+          if (!nsfwResult.safe) {
+            setValidationError(
+              `This image contains inappropriate content (Risk: ${nsfwResult.riskLevel}). Please upload a different image.`,
+            );
+            if (fileInputRef.current) fileInputRef.current.value = "";
+            setMediaChecking(false);
+            return;
+          }
+        } else if (file.type.startsWith("video/")) {
+          const videoResult = await moderateVideo(file, 5);
+
+          if (!videoResult.safe) {
+            setValidationError(
+              `This video contains inappropriate content (${videoResult.unsafeFrames}/${videoResult.totalFrames} frames flagged). Please upload a different video. `,
+            );
+            if (fileInputRef.current) fileInputRef.current.value = "";
+            setMediaChecking(false);
+            return;
+          }
+        }
+
+        setMedia(file);
+        setMediaPreview(URL.createObjectURL(file));
+      } catch (error) {
+        console.error("Media moderation error:", error);
+        setValidationError("Failed to validate media.  Please try again.");
+      } finally {
+        setMediaChecking(false);
+      }
     }
   };
 
@@ -54,7 +111,7 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({
   };
 
   const validateForm = () => {
-    if (!title.trim()) return "Title is required.";
+    if (!title.trim()) return "Title is required. ";
     if (title.trim().length < 5) return "Title must be at least 5 characters.";
     if (!body.trim()) return "Body is required.";
     if (body.trim().length < 10) return "Body must be at least 10 characters.";
@@ -70,9 +127,24 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setValidationError("");
+
     const error = validateForm();
     if (error) {
       setValidationError(error);
+      return;
+    }
+
+    if (containsBadWords(title.trim())) {
+      setValidationError(
+        "Post title contains inappropriate or offensive language",
+      );
+      return;
+    }
+
+    if (containsBadWords(body.trim())) {
+      setValidationError(
+        "Post body contains inappropriate or offensive language",
+      );
       return;
     }
 
@@ -107,7 +179,7 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({
         <div className="flex justify-between items-center px-4 py-3 border-b border-gray-100">
           <button
             onClick={onClose}
-            className="text-gray-500 hover:text-gray-800 transition rounded-full p-2 hover:bg-gray-100"
+            className="text-gray-500 hover:text-gray-800 transition rounded-full p-2 hover: bg-gray-100"
             aria-label="Close create post modal"
             tabIndex={0}
           >
@@ -127,9 +199,9 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({
           </button>
           <button
             onClick={handleSubmit}
-            disabled={loading || !title.trim() || !body.trim()}
-            className={`px-5 py-1.5 rounded-full font-bold text-sm transition ${
-              loading || !title.trim() || !body.trim()
+            disabled={loading || mediaChecking || !title.trim() || !body.trim()}
+            className={`px-5 py-1. 5 rounded-full font-bold text-sm transition ${
+              loading || mediaChecking || !title.trim() || !body.trim()
                 ? "bg-blue-300 text-white cursor-not-allowed"
                 : "bg-blue-600 text-white hover:bg-blue-700"
             }`}
@@ -171,6 +243,13 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({
               onChange={(e) => setBody(e.target.value)}
               required
             ></textarea>
+
+            {mediaChecking && (
+              <div className="mt-2 text-sm text-blue-600 font-semibold bg-blue-50 border border-blue-200 rounded px-3 py-2 flex items-center gap-2">
+                <span className="animate-spin">⏳</span>
+                Checking media content...
+              </div>
+            )}
 
             {mediaPreview && (
               <div className="relative mt-2">
@@ -216,7 +295,7 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({
 
             {validationError && (
               <div className="mt-2 text-sm text-red-600 font-semibold bg-red-50 border border-red-200 rounded px-3 py-2">
-                {validationError}
+                ⚠️ {validationError}
               </div>
             )}
 
@@ -224,7 +303,10 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="p-2 text-blue-500 hover:bg-blue-50 rounded-full transition"
+                disabled={mediaChecking}
+                className={`p-2 text-blue-500 hover:bg-blue-50 rounded-full transition ${
+                  mediaChecking ? "opacity-50 cursor-not-allowed" : ""
+                }`}
                 title="Add Media"
                 tabIndex={0}
               >
@@ -248,6 +330,7 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({
                 className="hidden"
                 accept="image/*,video/*"
                 onChange={handleFileChange}
+                disabled={mediaChecking}
               />
               <span className="ml-4 text-xs text-gray-400">
                 JPG, PNG, MP4, MOV. Max size 10MB.

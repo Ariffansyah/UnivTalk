@@ -14,6 +14,7 @@ import { useAuth } from "../context/AuthContext";
 import { changePassword, deleteAccount } from "../services/api/auth";
 import { fetchUniversitySuggestions } from "../services/api/uni";
 import { useAlert } from "../context/AlertContext";
+import { containsBadWords } from "../utils/contentModeration";
 
 type PostWithVote = Post & { my_vote?: number | null };
 const DEBOUNCE_DELAY = 400;
@@ -121,6 +122,33 @@ const ProfilePage: React.FC = () => {
   const submitEditProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     setActionError(null);
+
+    if (containsBadWords(editFirstName.trim())) {
+      setActionError("First name contains inappropriate or offensive language");
+      showToast(
+        "First name contains inappropriate or offensive language",
+        "error",
+      );
+      return;
+    }
+
+    if (containsBadWords(editLastName.trim())) {
+      setActionError("Last name contains inappropriate or offensive language");
+      showToast(
+        "Last name contains inappropriate or offensive language",
+        "error",
+      );
+      return;
+    }
+
+    if (containsBadWords(editUsername.trim())) {
+      setActionError("Username contains inappropriate or offensive language");
+      showToast(
+        "Username contains inappropriate or offensive language",
+        "error",
+      );
+      return;
+    }
 
     if (
       !selectedUni &&
@@ -249,7 +277,6 @@ const ProfilePage: React.FC = () => {
       }
     };
     fetchProfileAndPosts();
-    // eslint-disable-next-line
   }, [userIdParam, location.pathname, navigate, currentUser]);
 
   const handleVote = async (postId: number, type: "upvote" | "downvote") => {
@@ -367,7 +394,7 @@ const ProfilePage: React.FC = () => {
       return;
     }
     const confirm = await showConfirm(
-      "This will permanently delete your account. Continue?",
+      "This will permanently delete your account.  Continue?",
     );
     if (!confirm) return;
     setDeleteLoading(true);
@@ -409,14 +436,14 @@ const ProfilePage: React.FC = () => {
       <div className="max-w-4xl mx-auto px-2 sm:px-4">
         {actionError && (
           <div className="mb-4 p-3 text-center bg-red-50 border border-red-500 rounded text-red-700 font-bold">
-            {actionError}
+            ⚠️ {actionError}
           </div>
         )}
         <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
           <div className="h-32 bg-linear-to-r from-blue-600 to-indigo-700 shadow-inner"></div>
           <div className="px-4 sm:px-8 pb-8">
             <div className="relative flex flex-col sm:flex-row justify-between items-end -mt-10 sm:-mt-12 mb-6 gap-4">
-              <div className="p-1.5 bg-white rounded-2xl shadow-md border border-gray-100">
+              <div className="p-1.  5 bg-white rounded-2xl shadow-md border border-gray-100">
                 <div
                   className="w-20 h-20 sm:w-32 sm:h-32 bg-blue-50 rounded-xl flex items-center justify-center text-3xl sm:text-5xl font-bold text-blue-600 uppercase border-2 border-blue-100"
                   style={{ userSelect: "none" }}
@@ -428,13 +455,13 @@ const ProfilePage: React.FC = () => {
                 <div className="flex flex-col sm:flex-row gap-2">
                   <button
                     onClick={openEditProfile}
-                    className="px-4 py-2.5 bg-gray-900 text-white text-sm font-bold rounded-xl hover:bg-gray-800 transition shadow-lg cursor-pointer"
+                    className="px-4 py-2.  5 bg-gray-900 text-white text-sm font-bold rounded-xl hover:bg-gray-800 transition shadow-lg cursor-pointer"
                   >
                     Edit Profile
                   </button>
                   <button
                     onClick={() => setIsPasswordOpen(true)}
-                    className="px-4 py-2.5 bg-blue-600 text-white text-sm font-bold rounded-xl hover:bg-blue-700 transition shadow-lg cursor-pointer"
+                    className="px-4 py-2. 5 bg-blue-600 text-white text-sm font-bold rounded-xl hover:bg-blue-700 transition shadow-lg cursor-pointer"
                   >
                     Change Password
                   </button>
@@ -491,7 +518,7 @@ const ProfilePage: React.FC = () => {
             </div>
             {(isOwnProfile || currentUser?.is_admin) && (
               <div className="mt-6 flex items-center gap-2 text-xs font-bold text-blue-600 bg-blue-50 px-4 py-2 rounded-full w-fit">
-                <span>📧 Verified Email:</span>
+                <span>📧 Verified Email: </span>
                 <span className="text-blue-800">{profile.email}</span>
               </div>
             )}
@@ -513,7 +540,7 @@ const ProfilePage: React.FC = () => {
                 onChange={(e) => setEditFirstName(e.target.value)}
               />
               <input
-                className="w-full p-2 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-400"
+                className="w-full p-2 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:  ring-blue-400"
                 placeholder="Last name"
                 value={editLastName}
                 onChange={(e) => setEditLastName(e.target.value)}
@@ -546,7 +573,7 @@ const ProfilePage: React.FC = () => {
                         <li
                           key={univ}
                           onMouseDown={() => handleUniSuggestionClick(univ)}
-                          className="cursor-pointer px-4 py-2.5 text-sm hover:bg-blue-50 text-gray-700 border-b last:border-none"
+                          className="cursor-pointer px-4 py-2.  5 text-sm hover:bg-blue-50 text-gray-700 border-b last:border-none"
                         >
                           {univ}
                         </li>
@@ -560,7 +587,7 @@ const ProfilePage: React.FC = () => {
                 )}
               </div>
               <select
-                className="w-full p-2 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-400"
+                className="w-full p-2 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:  ring-2 focus:ring-blue-400"
                 value={editStatus}
                 onChange={(e) => setEditStatus(e.target.value)}
               >

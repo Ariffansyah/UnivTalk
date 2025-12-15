@@ -5,6 +5,7 @@ import {
   getCategories,
   type Category,
 } from "../services/api/forums";
+import { validateForumContent } from "../utils/contentModeration";
 
 const CreateForumPage: React.FC = () => {
   const navigate = useNavigate();
@@ -26,7 +27,7 @@ const CreateForumPage: React.FC = () => {
         }
       } catch (err: any) {
         setError(
-          "Failed to fetch categories:  " + (err.message || "Unknown error"),
+          "Failed to fetch categories:   " + (err.message || "Unknown error"),
         );
       }
     };
@@ -46,6 +47,13 @@ const CreateForumPage: React.FC = () => {
 
     if (!categoryId) {
       setError("Please select a category");
+      setLoading(false);
+      return;
+    }
+
+    const validation = validateForumContent(name, description);
+    if (!validation.isValid) {
+      setError(validation.error);
       setLoading(false);
       return;
     }
@@ -106,13 +114,14 @@ const CreateForumPage: React.FC = () => {
             </label>
             <p className="text-xs text-gray-500 mb-3">
               Forum names including capitalization cannot be changed.
+              Inappropriate content is not allowed.
             </p>
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
               maxLength={21}
-              className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all duration-200 bg-white hover:border-blue-300"
+              className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus: ring-blue-500 focus:border-blue-500 outline-none transition-all duration-200 bg-white hover:border-blue-300"
               placeholder="Enter forum name"
               autoComplete="off"
               aria-label="Forum name"
@@ -157,7 +166,7 @@ const CreateForumPage: React.FC = () => {
               onChange={(e) => setDescription(e.target.value)}
               rows={5}
               className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all duration-200 bg-white hover:border-blue-300 resize-none"
-              placeholder="What is this forum about?"
+              placeholder="What is this forum about?  (Keep it appropriate)"
               aria-label="Forum description"
             ></textarea>
           </div>
@@ -176,7 +185,7 @@ const CreateForumPage: React.FC = () => {
               className={`px-8 py-3 bg-linear-to-r from-blue-600 to-indigo-600 text-white font-semibold rounded-xl transition-all duration-200 ${
                 loading
                   ? "opacity-50 cursor-not-allowed"
-                  : "hover: shadow-lg hover:shadow-blue-500/50 hover:scale-105 cursor-pointer"
+                  : "hover:shadow-lg hover:shadow-blue-500/50 hover:scale-105 cursor-pointer"
               }`}
               style={loading ? { pointerEvents: "none" } : {}}
             >

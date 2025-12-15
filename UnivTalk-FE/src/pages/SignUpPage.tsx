@@ -4,6 +4,7 @@ import { signUp } from "../services/api/auth.ts";
 import { useNavigate } from "react-router-dom";
 import logo from "../assets/LogoUnivTalk.png";
 import { useAlert } from "../context/AlertContext";
+import { containsBadWords } from "../utils/contentModeration";
 
 const DEBOUNCE_DELAY = 400;
 
@@ -94,26 +95,38 @@ const SignUpPage: React.FC = () => {
 
     if (!form.firstName || form.firstName.length < 2)
       errObj.firstName = "First name is required (at least 2 characters).";
+    else if (containsBadWords(form.firstName))
+      errObj.firstName = "First name contains inappropriate language.";
+
     if (!form.lastName || form.lastName.length < 2)
       errObj.lastName = "Last name is required (at least 2 characters).";
+    else if (containsBadWords(form.lastName))
+      errObj.lastName = "Last name contains inappropriate language.";
+
     if (!form.username || form.username.length < 8)
       errObj.username =
         "Username must be at least 8 characters (letters/numbers only, no spaces).";
+    else if (containsBadWords(form.username))
+      errObj.username = "Username contains inappropriate language.";
+
     if (!validateEmail(form.email))
       errObj.email = "Please enter a valid email address.";
+
     if (!form.password || form.password.length < 8)
       errObj.password = "Password must be at least 8 characters.";
     else if (!/[A-Z]/.test(form.password))
       errObj.password = "Password must contain at least one uppercase letter.";
     else if (!/[a-z]/.test(form.password))
-      errObj.password = "Password must contain at least one lowercase letter.";
+      errObj.password = "Password must contain at least one lowercase letter. ";
     else if (!/\d/.test(form.password))
-      errObj.password = "Password must contain at least one number.";
-    else if (!/[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]+/.test(form.password))
+      errObj.password = "Password must contain at least one number. ";
+    else if (!/[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/? ]+/.test(form.password))
       errObj.password =
-        "Password must contain at least one special character (e.g. @#$%).";
+        "Password must contain at least one special character (e.g.  @#$%).";
+
     if (form.password !== form.confirmPassword)
       errObj.confirmPassword = "Passwords do not match.";
+
     if (
       !selectedUniv &&
       !suggestions.some(
@@ -198,9 +211,9 @@ const SignUpPage: React.FC = () => {
                 name="firstName"
                 value={form.firstName}
                 onChange={handleChange}
-                className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition ${fieldErrors.firstName ? "border-red-400" : "border-gray-300"}`}
+                className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus: ring-blue-500 focus: border-transparent transition ${fieldErrors.firstName ? "border-red-400" : "border-gray-300"}`}
                 minLength={2}
-                placeholder="e.g. John"
+                placeholder="e.g.  John"
               />
               <p className="text-xs text-gray-400 mt-1">
                 At least 2 characters, letters and spaces only.
@@ -259,7 +272,7 @@ const SignUpPage: React.FC = () => {
               name="email"
               value={form.email}
               onChange={handleChange}
-              className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition ${fieldErrors.email ? "border-red-400" : "border-gray-300"}`}
+              className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus: ring-blue-500 focus: border-transparent transition ${fieldErrors.email ? "border-red-400" : "border-gray-300"}`}
               placeholder="name@university.edu"
             />
             <p className="text-xs text-gray-400 mt-1">
@@ -283,7 +296,7 @@ const SignUpPage: React.FC = () => {
                   onChange={handleChange}
                   className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition ${fieldErrors.password ? "border-red-400" : "border-gray-300"}`}
                   minLength={8}
-                  placeholder="Min. 8 chars w/ upper, lower, number, symbol"
+                  placeholder="Min.  8 chars w/ upper, lower, number, symbol"
                 />
                 <button
                   type="button"
@@ -315,7 +328,7 @@ const SignUpPage: React.FC = () => {
                   name="confirmPassword"
                   value={form.confirmPassword}
                   onChange={handleChange}
-                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition ${fieldErrors.confirmPassword ? "border-red-400" : "border-gray-300"}`}
+                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus: ring-blue-500 focus: border-transparent transition ${fieldErrors.confirmPassword ? "border-red-400" : "border-gray-300"}`}
                   minLength={8}
                   placeholder="Repeat password"
                 />
@@ -399,7 +412,7 @@ const SignUpPage: React.FC = () => {
 
         {errorMsg && (
           <div className="mt-6 p-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg flex items-center gap-2 animate-pulse font-bold">
-            {errorMsg}
+            ⚠️ {errorMsg}
           </div>
         )}
 
