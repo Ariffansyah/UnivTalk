@@ -271,18 +271,21 @@ const ForumDetail: React.FC = () => {
 
     setEditLoading(true);
     try {
-      await updateForum(forumId, {
-        title: editTitle,
-        description: editDescription,
+      const updateData: any = {
+        title: editTitle.trim(),
+        description: editDescription.trim(),
         category_id: editCategoryId,
-      });
+        updated_at: new Date().toISOString(),
+      };
+
+      await updateForum(forumId, updateData);
 
       await fetchForumData();
       setIsEditModalOpen(false);
       showToast("Forum updated successfully!", "success");
     } catch (err: any) {
-      setError("Failed to update forum: " + (err.message || "Unknown error"));
-      showToast("Failed to update forum. Please try again.", "error");
+      console.error("Update error:", err);
+      showToast("Failed to update forum.  Please try again.", "error");
     } finally {
       setEditLoading(false);
     }
@@ -644,7 +647,7 @@ const ForumDetail: React.FC = () => {
                           </button>
                         </div>
                         <button
-                          className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-50 rounded-lg transition cursor-pointer"
+                          className="flex items-center gap-2 px-3 py-1. 5 text-sm font-medium text-blue-600 hover:bg-blue-50 rounded-lg transition cursor-pointer"
                           onClick={() => navigate(`/posts/${post.id}`)}
                         >
                           <span>💬</span> <span>Comment</span>
@@ -682,7 +685,7 @@ const ForumDetail: React.FC = () => {
       </div>
 
       {isEditModalOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/60 flex items-center backdrop-blur-sm justify-center z-50 p-4 animate-fade-in">
           <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b border-blue-100">
               <h2 className="text-2xl font-bold text-gray-900">Edit Forum</h2>

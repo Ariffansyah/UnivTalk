@@ -34,12 +34,10 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
 
-      // Accept only images or videos
       if (!file.type.match(/^image\/|^video\//)) {
         setValidationError("Media must be an image or video file.");
         return;
       }
-      // Max 10MB size
       if (file.size > MAX_MEDIA_SIZE) {
         setValidationError("Media file must be smaller than 10MB.");
         return;
