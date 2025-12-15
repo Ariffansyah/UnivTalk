@@ -682,7 +682,7 @@ const ForumDetail: React.FC = () => {
       </div>
 
       {isEditModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b border-blue-100">
               <h2 className="text-2xl font-bold text-gray-900">Edit Forum</h2>
